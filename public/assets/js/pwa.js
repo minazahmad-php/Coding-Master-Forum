@@ -1,28 +1,25 @@
-// PWA (Progressive Web App) functionality
-class PWAManager {
+/* Modern Forum - PWA JavaScript */
+
+class PWA {
     constructor() {
-        this.isInstalled = false;
-        this.deferredPrompt = null;
         this.isOnline = navigator.onLine;
-        
+        this.deferredPrompt = null;
         this.init();
     }
-    
+
     init() {
         this.registerServiceWorker();
         this.setupInstallPrompt();
         this.setupOnlineOfflineHandlers();
-        this.setupNotificationPermission();
+        this.setupPushNotifications();
         this.setupBackgroundSync();
-        this.setupShareTarget();
-        this.setupFileHandlers();
     }
-    
+
     async registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             try {
                 const registration = await navigator.serviceWorker.register('/sw.js');
-                console.log('Service Worker registered successfully:', registration);
+                console.log('PWA: Service Worker registered successfully', registration);
                 
                 // Check for updates
                 registration.addEventListener('updatefound', () => {
@@ -35,420 +32,340 @@ class PWAManager {
                 });
                 
             } catch (error) {
-                console.error('Service Worker registration failed:', error);
+                console.error('PWA: Service Worker registration failed', error);
             }
         }
     }
-    
+
     setupInstallPrompt() {
         // Listen for the beforeinstallprompt event
         window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('PWA install prompt triggered');
-            
-            // Prevent the mini-infobar from appearing on mobile
+            console.log('PWA: Install prompt triggered');
             e.preventDefault();
-            
-            // Stash the event so it can be triggered later
             this.deferredPrompt = e;
-            
-            // Show install button
             this.showInstallButton();
         });
-        
+
         // Listen for the appinstalled event
         window.addEventListener('appinstalled', () => {
-            console.log('PWA was installed');
-            this.isInstalled = true;
+            console.log('PWA: App installed successfully');
             this.hideInstallButton();
             this.deferredPrompt = null;
-            
-            // Track installation
-            this.trackInstallation();
+            this.showNotification('App installed successfully!', 'success');
         });
     }
-    
+
     showInstallButton() {
-        let installButton = document.getElementById('pwa-install-button');
-        
-        if (!installButton) {
-            installButton = document.createElement('button');
-            installButton.id = 'pwa-install-button';
-            installButton.className = 'pwa-install-button';
-            installButton.innerHTML = `
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                </svg>
-                Install App
+        let installBtn = document.querySelector('.install-btn');
+        if (!installBtn) {
+            installBtn = document.createElement('button');
+            installBtn.className = 'install-btn btn btn-primary';
+            installBtn.innerHTML = '<i class="fas fa-download"></i> Install App';
+            installBtn.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                z-index: 1000;
+                box-shadow: var(--shadow-lg);
             `;
             
-            // Add to header or create floating button
-            const header = document.querySelector('header') || document.body;
-            header.appendChild(installButton);
+            installBtn.addEventListener('click', () => {
+                this.installApp();
+            });
+            
+            document.body.appendChild(installBtn);
         }
         
-        installButton.style.display = 'block';
-        installButton.addEventListener('click', () => this.installApp());
+        installBtn.style.display = 'block';
     }
-    
+
     hideInstallButton() {
-        const installButton = document.getElementById('pwa-install-button');
-        if (installButton) {
-            installButton.style.display = 'none';
+        const installBtn = document.querySelector('.install-btn');
+        if (installBtn) {
+            installBtn.style.display = 'none';
         }
     }
-    
+
     async installApp() {
         if (!this.deferredPrompt) {
             return;
         }
-        
-        // Show the install prompt
-        this.deferredPrompt.prompt();
-        
-        // Wait for the user to respond to the prompt
-        const { outcome } = await this.deferredPrompt.userChoice;
-        
-        console.log(`User response to the install prompt: ${outcome}`);
-        
-        // Clear the deferredPrompt
-        this.deferredPrompt = null;
-        
-        // Hide the install button
-        this.hideInstallButton();
+
+        try {
+            this.deferredPrompt.prompt();
+            const { outcome } = await this.deferredPrompt.userChoice;
+            
+            console.log('PWA: Install prompt outcome', outcome);
+            
+            if (outcome === 'accepted') {
+                this.showNotification('Installing app...', 'info');
+            } else {
+                this.showNotification('App installation cancelled', 'warning');
+            }
+            
+            this.deferredPrompt = null;
+            this.hideInstallButton();
+        } catch (error) {
+            console.error('PWA: Install prompt failed', error);
+            this.showNotification('Failed to install app', 'error');
+        }
     }
-    
+
+    showUpdateNotification() {
+        const updateNotification = document.createElement('div');
+        updateNotification.className = 'update-notification';
+        updateNotification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary-color);
+            color: var(--text-white);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        `;
+        
+        updateNotification.innerHTML = `
+            <i class="fas fa-sync-alt"></i>
+            <span>New version available!</span>
+            <button class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: white; border: none;">
+                Update
+            </button>
+            <button class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: white; border: none;">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        document.body.appendChild(updateNotification);
+        
+        // Update button
+        updateNotification.querySelector('button:first-of-type').addEventListener('click', () => {
+            this.updateApp();
+        });
+        
+        // Close button
+        updateNotification.querySelector('button:last-of-type').addEventListener('click', () => {
+            updateNotification.remove();
+        });
+        
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+            if (updateNotification.parentNode) {
+                updateNotification.remove();
+            }
+        }, 10000);
+    }
+
+    async updateApp() {
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (registration && registration.waiting) {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                window.location.reload();
+            }
+        }
+    }
+
     setupOnlineOfflineHandlers() {
         window.addEventListener('online', () => {
-            console.log('App is online');
+            console.log('PWA: Back online');
             this.isOnline = true;
-            this.showOnlineStatus();
+            this.showNotification('You are back online!', 'success');
             this.syncOfflineData();
         });
-        
+
         window.addEventListener('offline', () => {
-            console.log('App is offline');
+            console.log('PWA: Gone offline');
             this.isOnline = false;
-            this.showOfflineStatus();
+            this.showNotification('You are offline. Some features may be limited.', 'warning');
         });
-        
-        // Initial status
-        if (this.isOnline) {
-            this.showOnlineStatus();
-        } else {
-            this.showOfflineStatus();
+
+        // Show initial online/offline status
+        if (!this.isOnline) {
+            this.showOfflineIndicator();
         }
     }
-    
-    showOnlineStatus() {
-        this.showStatusMessage('You are back online!', 'success');
-    }
-    
-    showOfflineStatus() {
-        this.showStatusMessage('You are offline. Some features may be limited.', 'warning');
-    }
-    
-    showStatusMessage(message, type) {
-        // Remove existing status message
-        const existingMessage = document.getElementById('pwa-status-message');
-        if (existingMessage) {
-            existingMessage.remove();
+
+    showOfflineIndicator() {
+        let indicator = document.querySelector('.offline-indicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.className = 'offline-indicator';
+            indicator.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                background: var(--warning-color);
+                color: var(--text-white);
+                padding: var(--spacing-sm);
+                text-align: center;
+                font-size: var(--text-sm);
+                z-index: 10000;
+            `;
+            indicator.innerHTML = '<i class="fas fa-wifi"></i> You are offline';
+            document.body.appendChild(indicator);
         }
         
-        // Create new status message
-        const statusMessage = document.createElement('div');
-        statusMessage.id = 'pwa-status-message';
-        statusMessage.className = `pwa-status-message pwa-status-${type}`;
-        statusMessage.textContent = message;
-        
-        // Add to page
-        document.body.appendChild(statusMessage);
-        
-        // Auto-remove after 3 seconds
-        setTimeout(() => {
-            if (statusMessage.parentNode) {
-                statusMessage.remove();
-            }
-        }, 3000);
+        indicator.style.display = this.isOnline ? 'none' : 'block';
     }
-    
-    async setupNotificationPermission() {
-        if ('Notification' in window && 'serviceWorker' in navigator) {
-            const permission = await Notification.requestPermission();
-            
-            if (permission === 'granted') {
-                console.log('Notification permission granted');
-                this.subscribeToPushNotifications();
-            } else {
-                console.log('Notification permission denied');
-            }
-        }
-    }
-    
-    async subscribeToPushNotifications() {
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-            try {
+
+    async syncOfflineData() {
+        try {
+            // Trigger background sync
+            if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
                 const registration = await navigator.serviceWorker.ready;
+                await registration.sync.register('background-sync');
+            }
+            
+            // Sync any pending actions
+            await this.syncPendingActions();
+        } catch (error) {
+            console.error('PWA: Sync failed', error);
+        }
+    }
+
+    async syncPendingActions() {
+        // Implementation would depend on your offline storage strategy
+        console.log('PWA: Syncing pending actions...');
+    }
+
+    async setupPushNotifications() {
+        if (!('Notification' in window)) {
+            console.log('PWA: Notifications not supported');
+            return;
+        }
+
+        if (Notification.permission === 'granted') {
+            console.log('PWA: Notifications already granted');
+            return;
+        }
+
+        if (Notification.permission !== 'denied') {
+            try {
+                const permission = await Notification.requestPermission();
+                console.log('PWA: Notification permission', permission);
                 
-                const subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: this.urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-                });
-                
-                // Send subscription to server
-                await fetch('/api/push/subscribe', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(subscription)
-                });
-                
-                console.log('Push subscription successful');
-                
+                if (permission === 'granted') {
+                    this.subscribeToPush();
+                }
             } catch (error) {
-                console.error('Push subscription failed:', error);
+                console.error('PWA: Failed to request notification permission', error);
             }
         }
     }
-    
+
+    async subscribeToPush() {
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: this.urlBase64ToUint8Array(this.getVapidPublicKey())
+            });
+            
+            console.log('PWA: Push subscription created', subscription);
+            
+            // Send subscription to server
+            await this.sendSubscriptionToServer(subscription);
+            
+        } catch (error) {
+            console.error('PWA: Push subscription failed', error);
+        }
+    }
+
+    async sendSubscriptionToServer(subscription) {
+        try {
+            const response = await fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.getCSRFToken()
+                },
+                body: JSON.stringify(subscription)
+            });
+            
+            if (response.ok) {
+                console.log('PWA: Subscription sent to server');
+            }
+        } catch (error) {
+            console.error('PWA: Failed to send subscription to server', error);
+        }
+    }
+
+    setupBackgroundSync() {
+        // Register for background sync
+        if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+            navigator.serviceWorker.ready.then((registration) => {
+                // Background sync will be handled by the service worker
+                console.log('PWA: Background sync ready');
+            });
+        }
+    }
+
+    // Utility methods
     urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
         const base64 = (base64String + padding)
             .replace(/-/g, '+')
             .replace(/_/g, '/');
-        
+
         const rawData = window.atob(base64);
         const outputArray = new Uint8Array(rawData.length);
-        
+
         for (let i = 0; i < rawData.length; ++i) {
             outputArray[i] = rawData.charCodeAt(i);
         }
         return outputArray;
     }
-    
-    setupBackgroundSync() {
-        if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
-            // Register background sync for offline actions
-            navigator.serviceWorker.ready.then(registration => {
-                // This would be called when user performs actions while offline
-                window.addEventListener('beforeunload', () => {
-                    registration.sync.register('background-sync');
-                });
-            });
+
+    getVapidPublicKey() {
+        // This should be your VAPID public key
+        return 'YOUR_VAPID_PUBLIC_KEY';
+    }
+
+    getCSRFToken() {
+        const token = document.querySelector('meta[name="csrf-token"]');
+        return token ? token.getAttribute('content') : '';
+    }
+
+    showNotification(message, type = 'info') {
+        if (window.modernForum && window.modernForum.showNotification) {
+            window.modernForum.showNotification(message, type);
+        } else {
+            console.log('PWA Notification:', message);
         }
     }
-    
-    setupShareTarget() {
-        // Handle shared content
-        if (navigator.share) {
-            // Add share buttons to relevant content
-            this.addShareButtons();
-        }
+
+    // Public methods for external use
+    async install() {
+        return this.installApp();
     }
-    
-    addShareButtons() {
-        const shareButtons = document.querySelectorAll('[data-share]');
-        
-        shareButtons.forEach(button => {
-            button.addEventListener('click', async (e) => {
-                e.preventDefault();
-                
-                const shareData = {
-                    title: button.dataset.shareTitle || document.title,
-                    text: button.dataset.shareText || '',
-                    url: button.dataset.shareUrl || window.location.href
-                };
-                
-                try {
-                    await navigator.share(shareData);
-                    console.log('Content shared successfully');
-                } catch (error) {
-                    console.log('Error sharing:', error);
-                }
-            });
-        });
+
+    async update() {
+        return this.updateApp();
     }
-    
-    setupFileHandlers() {
-        // Handle file drops
-        document.addEventListener('dragover', (e) => {
-            e.preventDefault();
-        });
-        
-        document.addEventListener('drop', (e) => {
-            e.preventDefault();
-            
-            const files = Array.from(e.dataTransfer.files);
-            this.handleFiles(files);
-        });
-        
-        // Handle file input
-        const fileInputs = document.querySelectorAll('input[type="file"]');
-        fileInputs.forEach(input => {
-            input.addEventListener('change', (e) => {
-                const files = Array.from(e.target.files);
-                this.handleFiles(files);
-            });
-        });
-    }
-    
-    handleFiles(files) {
-        files.forEach(file => {
-            if (this.isValidFileType(file)) {
-                this.uploadFile(file);
-            } else {
-                this.showErrorMessage(`File type ${file.type} is not supported`);
-            }
-        });
-    }
-    
-    isValidFileType(file) {
-        const validTypes = [
-            'image/jpeg',
-            'image/png',
-            'image/gif',
-            'image/webp',
-            'text/plain',
-            'application/pdf'
-        ];
-        
-        return validTypes.includes(file.type);
-    }
-    
-    async uploadFile(file) {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        try {
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                console.log('File uploaded successfully:', result);
-                this.showSuccessMessage('File uploaded successfully');
-            } else {
-                throw new Error('Upload failed');
-            }
-        } catch (error) {
-            console.error('Upload error:', error);
-            this.showErrorMessage('Upload failed. Please try again.');
-        }
-    }
-    
-    showUpdateNotification() {
-        const updateNotification = document.createElement('div');
-        updateNotification.className = 'pwa-update-notification';
-        updateNotification.innerHTML = `
-            <div class="update-content">
-                <h3>Update Available</h3>
-                <p>A new version of the app is available.</p>
-                <div class="update-actions">
-                    <button onclick="this.updateApp()" class="update-btn">Update</button>
-                    <button onclick="this.dismissUpdate()" class="dismiss-btn">Later</button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(updateNotification);
-        
-        // Add event listeners
-        updateNotification.querySelector('.update-btn').addEventListener('click', () => {
-            this.updateApp();
-        });
-        
-        updateNotification.querySelector('.dismiss-btn').addEventListener('click', () => {
-            this.dismissUpdate();
-        });
-    }
-    
-    updateApp() {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistration().then(registration => {
-                if (registration && registration.waiting) {
-                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                    window.location.reload();
-                }
-            });
-        }
-    }
-    
-    dismissUpdate() {
-        const updateNotification = document.querySelector('.pwa-update-notification');
-        if (updateNotification) {
-            updateNotification.remove();
-        }
-    }
-    
-    async syncOfflineData() {
-        // Sync any offline data when connection is restored
-        console.log('Syncing offline data...');
-        
-        // This would typically sync data from IndexedDB
-        // For now, just log the action
-    }
-    
-    trackInstallation() {
-        // Track PWA installation
-        if (typeof gtag !== 'undefined') {
-            gtag('event', 'pwa_install', {
-                event_category: 'PWA',
-                event_label: 'App Installation'
-            });
-        }
-    }
-    
-    showSuccessMessage(message) {
-        this.showToast(message, 'success');
-    }
-    
-    showErrorMessage(message) {
-        this.showToast(message, 'error');
-    }
-    
-    showToast(message, type) {
-        const toast = document.createElement('div');
-        toast.className = `pwa-toast pwa-toast-${type}`;
-        toast.textContent = message;
-        
-        document.body.appendChild(toast);
-        
-        // Auto-remove after 3 seconds
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.remove();
-            }
-        }, 3000);
-    }
-    
-    // Utility methods
-    isStandalone() {
+
+    isInstalled() {
         return window.matchMedia('(display-mode: standalone)').matches ||
                window.navigator.standalone === true;
     }
-    
-    isMobile() {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    }
-    
-    getDeviceInfo() {
-        return {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            language: navigator.language,
-            isOnline: this.isOnline,
-            isStandalone: this.isStandalone(),
-            isMobile: this.isMobile()
-        };
+
+    getInstallPrompt() {
+        return this.deferredPrompt;
     }
 }
 
 // Initialize PWA when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.pwaManager = new PWAManager();
+    window.pwa = new PWA();
 });
 
-// Export for global use
-window.PWAManager = PWAManager;
+// Export for use in other scripts
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = PWA;
+}

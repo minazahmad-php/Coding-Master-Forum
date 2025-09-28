@@ -1,77 +1,77 @@
-// Service Worker for Universal Forum Hub
-const CACHE_NAME = 'forum-hub-v1';
-const STATIC_CACHE_NAME = 'forum-hub-static-v1';
-const DYNAMIC_CACHE_NAME = 'forum-hub-dynamic-v1';
+/* Modern Forum - Service Worker */
+
+const CACHE_NAME = 'modern-forum-v1';
+const STATIC_CACHE_NAME = 'modern-forum-static-v1';
+const DYNAMIC_CACHE_NAME = 'modern-forum-dynamic-v1';
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
     '/',
     '/assets/css/main.css',
-    '/assets/css/search.css',
-    '/assets/css/analytics.css',
+    '/assets/css/admin.css',
     '/assets/js/main.js',
-    '/assets/js/search.js',
-    '/assets/js/pwa.js',
-    '/assets/icons/icon-192x192.png',
-    '/assets/icons/icon-512x512.png',
+    '/assets/js/admin.js',
+    '/assets/images/logo.png',
+    '/assets/images/default-avatar.png',
+    '/assets/images/default-cover.jpg',
     '/manifest.json'
 ];
 
 // API endpoints to cache
 const API_CACHE_PATTERNS = [
-    /^\/api\/forums/,
-    /^\/api\/thread/,
-    /^\/api\/user/,
-    /^\/search\/suggestions/
+    '/api/forums',
+    '/api/forum/',
+    '/api/thread/',
+    '/api/user/',
+    '/api/search'
 ];
 
 // Install event - cache static files
-self.addEventListener('install', event => {
-    console.log('Service Worker installing...');
+self.addEventListener('install', (event) => {
+    console.log('Service Worker: Installing...');
     
     event.waitUntil(
         caches.open(STATIC_CACHE_NAME)
-            .then(cache => {
-                console.log('Caching static files...');
+            .then((cache) => {
+                console.log('Service Worker: Caching static files');
                 return cache.addAll(STATIC_FILES);
             })
             .then(() => {
-                console.log('Static files cached successfully');
+                console.log('Service Worker: Static files cached successfully');
                 return self.skipWaiting();
             })
-            .catch(error => {
-                console.error('Error caching static files:', error);
+            .catch((error) => {
+                console.error('Service Worker: Failed to cache static files', error);
             })
     );
 });
 
 // Activate event - clean up old caches
-self.addEventListener('activate', event => {
-    console.log('Service Worker activating...');
+self.addEventListener('activate', (event) => {
+    console.log('Service Worker: Activating...');
     
     event.waitUntil(
         caches.keys()
-            .then(cacheNames => {
+            .then((cacheNames) => {
                 return Promise.all(
-                    cacheNames.map(cacheName => {
-                        if (cacheName !== STATIC_CACHE_NAME && 
-                            cacheName !== DYNAMIC_CACHE_NAME) {
-                            console.log('Deleting old cache:', cacheName);
+                    cacheNames.map((cacheName) => {
+                        if (cacheName !== STATIC_CACHE_NAME && cacheName !== DYNAMIC_CACHE_NAME) {
+                            console.log('Service Worker: Deleting old cache', cacheName);
                             return caches.delete(cacheName);
                         }
                     })
                 );
             })
             .then(() => {
-                console.log('Service Worker activated');
+                console.log('Service Worker: Activated successfully');
                 return self.clients.claim();
             })
     );
 });
 
-// Fetch event - serve from cache or network
-self.addEventListener('fetch', event => {
-    const request = event.request;
+// Fetch event - serve cached content when offline
+self.addEventListener('fetch', (event) => {
+    const { request } = event;
     const url = new URL(request.url);
     
     // Skip non-GET requests
@@ -79,16 +79,11 @@ self.addEventListener('fetch', event => {
         return;
     }
     
-    // Skip external requests
-    if (url.origin !== location.origin) {
-        return;
-    }
-    
     // Handle different types of requests
-    if (isStaticFile(request)) {
+    if (isStaticFile(request.url)) {
         event.respondWith(handleStaticFile(request));
-    } else if (isApiRequest(request)) {
-        event.respondWith(handleApiRequest(request));
+    } else if (isAPIRequest(request.url)) {
+        event.respondWith(handleAPIRequest(request));
     } else if (isPageRequest(request)) {
         event.respondWith(handlePageRequest(request));
     } else {
@@ -96,282 +91,297 @@ self.addEventListener('fetch', event => {
     }
 });
 
-// Check if request is for a static file
-function isStaticFile(request) {
-    const url = new URL(request.url);
-    return url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/);
-}
-
-// Check if request is for API
-function isApiRequest(request) {
-    const url = new URL(request.url);
-    return url.pathname.startsWith('/api/') || 
-           url.pathname.startsWith('/search/suggestions');
-}
-
-// Check if request is for a page
-function isPageRequest(request) {
-    const url = new URL(request.url);
-    return url.pathname.startsWith('/') && 
-           !url.pathname.includes('.') &&
-           request.headers.get('accept').includes('text/html');
-}
-
-// Handle static file requests
-function handleStaticFile(request) {
-    return caches.match(request)
-        .then(response => {
-            if (response) {
-                return response;
-            }
-            
-            return fetch(request)
-                .then(response => {
-                    if (response.status === 200) {
-                        const responseClone = response.clone();
-                        caches.open(STATIC_CACHE_NAME)
-                            .then(cache => {
-                                cache.put(request, responseClone);
-                            });
-                    }
-                    return response;
-                });
+// Handle static files (CSS, JS, images)
+async function handleStaticFile(request) {
+    try {
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+        
+        const networkResponse = await fetch(request);
+        if (networkResponse.ok) {
+            const cache = await caches.open(STATIC_CACHE_NAME);
+            cache.put(request, networkResponse.clone());
+        }
+        
+        return networkResponse;
+    } catch (error) {
+        console.error('Service Worker: Error handling static file', error);
+        return new Response('Offline - Static file not available', {
+            status: 503,
+            statusText: 'Service Unavailable'
         });
+    }
 }
 
 // Handle API requests
-function handleApiRequest(request) {
-    return caches.open(DYNAMIC_CACHE_NAME)
-        .then(cache => {
-            return cache.match(request)
-                .then(response => {
-                    if (response) {
-                        // Return cached response and update in background
-                        fetch(request)
-                            .then(fetchResponse => {
-                                if (fetchResponse.status === 200) {
-                                    cache.put(request, fetchResponse.clone());
-                                }
-                            })
-                            .catch(() => {
-                                // Ignore fetch errors for background updates
-                            });
-                        
-                        return response;
-                    }
-                    
-                    // No cached response, fetch from network
-                    return fetch(request)
-                        .then(fetchResponse => {
-                            if (fetchResponse.status === 200) {
-                                cache.put(request, fetchResponse.clone());
-                            }
-                            return fetchResponse;
-                        })
-                        .catch(() => {
-                            // Return offline response for API requests
-                            return new Response(
-                                JSON.stringify({
-                                    error: 'Offline',
-                                    message: 'You are currently offline. Please check your connection.'
-                                }),
-                                {
-                                    status: 503,
-                                    headers: { 'Content-Type': 'application/json' }
-                                }
-                            );
-                        });
-                });
+async function handleAPIRequest(request) {
+    try {
+        // Try network first for API requests
+        const networkResponse = await fetch(request);
+        
+        if (networkResponse.ok) {
+            // Cache successful API responses
+            const cache = await caches.open(DYNAMIC_CACHE_NAME);
+            cache.put(request, networkResponse.clone());
+        }
+        
+        return networkResponse;
+    } catch (error) {
+        console.log('Service Worker: Network failed, trying cache for API request');
+        
+        // Fallback to cache
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+        
+        // Return offline response for API
+        return new Response(JSON.stringify({
+            success: false,
+            message: 'You are offline. Please check your internet connection.',
+            offline: true
+        }), {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
+    }
 }
 
 // Handle page requests
-function handlePageRequest(request) {
-    return caches.match(request)
-        .then(response => {
-            if (response) {
-                return response;
-            }
-            
-            return fetch(request)
-                .then(response => {
-                    if (response.status === 200) {
-                        const responseClone = response.clone();
-                        caches.open(DYNAMIC_CACHE_NAME)
-                            .then(cache => {
-                                cache.put(request, responseClone);
-                            });
+async function handlePageRequest(request) {
+    try {
+        const networkResponse = await fetch(request);
+        
+        if (networkResponse.ok) {
+            const cache = await caches.open(DYNAMIC_CACHE_NAME);
+            cache.put(request, networkResponse.clone());
+        }
+        
+        return networkResponse;
+    } catch (error) {
+        console.log('Service Worker: Network failed, trying cache for page request');
+        
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+        
+        // Return offline page
+        return caches.match('/offline.html') || new Response(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Offline - Modern Forum</title>
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        background: #f8fafc;
+                        color: #1e293b;
                     }
-                    return response;
-                })
-                .catch(() => {
-                    // Return offline page
-                    return caches.match('/offline.html')
-                        .then(offlineResponse => {
-                            if (offlineResponse) {
-                                return offlineResponse;
-                            }
-                            
-                            // Create a simple offline page
-                            return new Response(
-                                `
-                                <!DOCTYPE html>
-                                <html>
-                                <head>
-                                    <title>Offline - ${SITE_NAME}</title>
-                                    <meta name="viewport" content="width=device-width, initial-scale=1">
-                                    <style>
-                                        body { 
-                                            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
-                                            text-align: center; 
-                                            padding: 2rem; 
-                                            background: #f8f9fa;
-                                        }
-                                        .offline-container {
-                                            max-width: 400px;
-                                            margin: 0 auto;
-                                            background: white;
-                                            padding: 2rem;
-                                            border-radius: 10px;
-                                            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-                                        }
-                                        .offline-icon {
-                                            font-size: 4rem;
-                                            margin-bottom: 1rem;
-                                            color: #667eea;
-                                        }
-                                        h1 { color: #333; margin-bottom: 1rem; }
-                                        p { color: #666; margin-bottom: 2rem; }
-                                        .retry-btn {
-                                            background: #667eea;
-                                            color: white;
-                                            border: none;
-                                            padding: 0.75rem 1.5rem;
-                                            border-radius: 5px;
-                                            cursor: pointer;
-                                            font-size: 1rem;
-                                        }
-                                        .retry-btn:hover {
-                                            background: #5a6fd8;
-                                        }
-                                    </style>
-                                </head>
-                                <body>
-                                    <div class="offline-container">
-                                        <div class="offline-icon">📡</div>
-                                        <h1>You're Offline</h1>
-                                        <p>It looks like you're not connected to the internet. Please check your connection and try again.</p>
-                                        <button class="retry-btn" onclick="window.location.reload()">Try Again</button>
-                                    </div>
-                                </body>
-                                </html>
-                                `,
-                                {
-                                    status: 200,
-                                    headers: { 'Content-Type': 'text/html' }
-                                }
-                            );
-                        });
-                });
+                    .offline-container {
+                        text-align: center;
+                        padding: 2rem;
+                        max-width: 400px;
+                    }
+                    .offline-icon {
+                        font-size: 4rem;
+                        color: #64748b;
+                        margin-bottom: 1rem;
+                    }
+                    .offline-title {
+                        font-size: 1.5rem;
+                        font-weight: 600;
+                        margin-bottom: 1rem;
+                    }
+                    .offline-message {
+                        color: #64748b;
+                        margin-bottom: 2rem;
+                    }
+                    .retry-btn {
+                        background: #3b82f6;
+                        color: white;
+                        border: none;
+                        padding: 0.75rem 1.5rem;
+                        border-radius: 0.5rem;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        transition: background-color 0.2s;
+                    }
+                    .retry-btn:hover {
+                        background: #2563eb;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="offline-container">
+                    <div class="offline-icon">📡</div>
+                    <h1 class="offline-title">You're Offline</h1>
+                    <p class="offline-message">
+                        It looks like you're not connected to the internet. 
+                        Please check your connection and try again.
+                    </p>
+                    <button class="retry-btn" onclick="window.location.reload()">
+                        Try Again
+                    </button>
+                </div>
+            </body>
+            </html>
+        `, {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: {
+                'Content-Type': 'text/html'
+            }
         });
+    }
 }
 
 // Handle other requests
-function handleOtherRequest(request) {
-    return fetch(request)
-        .catch(() => {
-            // Return a generic offline response
-            return new Response('Offline', { status: 503 });
+async function handleOtherRequest(request) {
+    try {
+        return await fetch(request);
+    } catch (error) {
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+        
+        return new Response('Offline', {
+            status: 503,
+            statusText: 'Service Unavailable'
         });
+    }
+}
+
+// Helper functions
+function isStaticFile(url) {
+    return url.includes('/assets/') || 
+           url.includes('.css') || 
+           url.includes('.js') || 
+           url.includes('.png') || 
+           url.includes('.jpg') || 
+           url.includes('.jpeg') || 
+           url.includes('.gif') || 
+           url.includes('.svg') || 
+           url.includes('.woff') || 
+           url.includes('.woff2');
+}
+
+function isAPIRequest(url) {
+    return url.includes('/api/');
+}
+
+function isPageRequest(request) {
+    return request.headers.get('accept').includes('text/html');
 }
 
 // Background sync for offline actions
-self.addEventListener('sync', event => {
-    console.log('Background sync triggered:', event.tag);
+self.addEventListener('sync', (event) => {
+    console.log('Service Worker: Background sync triggered', event.tag);
     
     if (event.tag === 'background-sync') {
         event.waitUntil(doBackgroundSync());
     }
 });
 
-function doBackgroundSync() {
-    // Sync offline actions when connection is restored
-    return new Promise((resolve) => {
-        // Get offline actions from IndexedDB
-        getOfflineActions()
-            .then(actions => {
-                return Promise.all(
-                    actions.map(action => {
-                        return fetch(action.url, {
-                            method: action.method,
-                            headers: action.headers,
-                            body: action.body
-                        })
-                        .then(response => {
-                            if (response.ok) {
-                                removeOfflineAction(action.id);
-                            }
-                            return response;
-                        })
-                        .catch(error => {
-                            console.error('Background sync failed:', error);
-                        });
-                    })
-                );
-            })
-            .then(() => {
-                resolve();
-            });
-    });
+async function doBackgroundSync() {
+    try {
+        // Get pending actions from IndexedDB
+        const pendingActions = await getPendingActions();
+        
+        for (const action of pendingActions) {
+            try {
+                await syncAction(action);
+                await removePendingAction(action.id);
+            } catch (error) {
+                console.error('Service Worker: Failed to sync action', error);
+            }
+        }
+    } catch (error) {
+        console.error('Service Worker: Background sync failed', error);
+    }
 }
 
 // Push notifications
-self.addEventListener('push', event => {
-    console.log('Push notification received:', event);
+self.addEventListener('push', (event) => {
+    console.log('Service Worker: Push notification received');
     
     const options = {
-        body: event.data ? event.data.text() : 'New notification from Forum Hub',
-        icon: '/assets/icons/icon-192x192.png',
-        badge: '/assets/icons/badge-72x72.png',
+        body: 'You have a new notification',
+        icon: '/assets/images/icon-192x192.png',
+        badge: '/assets/images/badge-72x72.png',
         vibrate: [200, 100, 200],
         data: {
-            url: '/notifications'
+            dateOfArrival: Date.now(),
+            primaryKey: 1
         },
         actions: [
             {
-                action: 'view',
+                action: 'explore',
                 title: 'View',
-                icon: '/assets/icons/view-24x24.png'
+                icon: '/assets/images/checkmark.png'
             },
             {
-                action: 'dismiss',
-                title: 'Dismiss',
-                icon: '/assets/icons/dismiss-24x24.png'
+                action: 'close',
+                title: 'Close',
+                icon: '/assets/images/xmark.png'
             }
         ]
     };
     
+    if (event.data) {
+        const data = event.data.json();
+        options.body = data.body || options.body;
+        options.title = data.title || 'Modern Forum';
+        options.data = { ...options.data, ...data };
+    }
+    
     event.waitUntil(
-        self.registration.showNotification('Forum Hub', options)
+        self.registration.showNotification('Modern Forum', options)
     );
 });
 
-// Notification click
-self.addEventListener('notificationclick', event => {
-    console.log('Notification clicked:', event);
+// Notification click handler
+self.addEventListener('notificationclick', (event) => {
+    console.log('Service Worker: Notification clicked');
     
     event.notification.close();
     
-    if (event.action === 'view') {
+    if (event.action === 'explore') {
         event.waitUntil(
-            clients.openWindow(event.notification.data.url || '/')
+            clients.openWindow('/')
+        );
+    } else if (event.action === 'close') {
+        // Just close the notification
+        return;
+    } else {
+        // Default action - open the app
+        event.waitUntil(
+            clients.matchAll().then((clientList) => {
+                if (clientList.length > 0) {
+                    return clientList[0].focus();
+                }
+                return clients.openWindow('/');
+            })
         );
     }
 });
 
-// Message handling
-self.addEventListener('message', event => {
-    console.log('Service Worker received message:', event.data);
+// Message handling from main thread
+self.addEventListener('message', (event) => {
+    console.log('Service Worker: Message received', event.data);
     
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
@@ -380,43 +390,46 @@ self.addEventListener('message', event => {
     if (event.data && event.data.type === 'CACHE_URLS') {
         event.waitUntil(
             caches.open(DYNAMIC_CACHE_NAME)
-                .then(cache => {
+                .then((cache) => {
                     return cache.addAll(event.data.urls);
                 })
         );
     }
 });
 
-// Utility functions for offline storage
-function getOfflineActions() {
-    return new Promise((resolve) => {
-        // This would typically use IndexedDB
-        // For now, return empty array
-        resolve([]);
-    });
+// IndexedDB helpers for offline storage
+async function getPendingActions() {
+    // Implementation would depend on your IndexedDB setup
+    return [];
 }
 
-function removeOfflineAction(id) {
-    // This would typically remove from IndexedDB
-    console.log('Removing offline action:', id);
+async function syncAction(action) {
+    // Implementation would depend on your sync logic
+    return fetch(action.url, action.options);
+}
+
+async function removePendingAction(id) {
+    // Implementation would depend on your IndexedDB setup
+    return Promise.resolve();
 }
 
 // Cache management
-function clearOldCaches() {
-    return caches.keys()
-        .then(cacheNames => {
-            return Promise.all(
-                cacheNames.map(cacheName => {
-                    if (cacheName !== STATIC_CACHE_NAME && 
-                        cacheName !== DYNAMIC_CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        });
+async function clearOldCaches() {
+    const cacheNames = await caches.keys();
+    const oldCaches = cacheNames.filter(name => 
+        name.startsWith('modern-forum-') && 
+        name !== STATIC_CACHE_NAME && 
+        name !== DYNAMIC_CACHE_NAME
+    );
+    
+    return Promise.all(
+        oldCaches.map(name => caches.delete(name))
+    );
 }
 
 // Periodic cache cleanup
 setInterval(() => {
-    clearOldCaches();
+    clearOldCaches().then(() => {
+        console.log('Service Worker: Old caches cleaned up');
+    });
 }, 24 * 60 * 60 * 1000); // Every 24 hours
