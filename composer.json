@@ -1,0 +1,31 @@
+{
+    "name": "minazahmad/coding-master-forum",
+    "description": "A modern, lightweight forum system built with PHP and SQLite",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Minaz Ahmad",
+            "email": "minazahmad@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.0",
+        "ext-pdo": "*",
+        "ext-sqlite3": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Core\\": "core/",
+            "Models\\": "models/",
+            "Controllers\\": "controllers/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

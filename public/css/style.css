@@ -1,0 +1,198 @@
+/* Custom styles for Coding Master Forum public/css/style.css*/
+
+:root {
+    --primary-color: #1877f2;
+    --secondary-color: #42b883;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f0f2f5;
+    color: #1c1e21;
+    line-height: 1.6;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    font-weight: 600;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #166fe5;
+    border-color: #166fe5;
+}
+
+.thread-content, .post-content {
+    line-height: 1.8;
+    font-size: 1.05rem;
+}
+
+.thread-content img, .post-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+.badge {
+    font-weight: 500;
+}
+
+.alert {
+    border: none;
+    border-radius: 6px;
+}
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+.list-group-item {
+    border: 1px solid rgba(0, 0, 0, 0.075);
+    margin-bottom: 0;
+}
+
+.list-group-item:first-child {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+.list-group-item:last-child {
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.pagination .page-item .page-link {
+    border-radius: 4px;
+    margin: 0 2px;
+    color: var(--primary-color);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(24, 119, 242, 0.25);
+}
+
+.avatar {
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    .card-body {
+        padding: 15px;
+    }
+    
+    .display-4 {
+        font-size: 2rem;
+    }
+}
+
+/* Custom utilities */
+.text-small {
+    font-size: 0.875rem;
+}
+
+.bg-light-custom {
+    background-color: #f8f9fa !important;
+}
+
+.shadow-sm-custom {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* Animation for alerts */
+.alert {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Hover effects */
+.list-group-item-action:hover {
+    background-color: #f8f9fa;
+}
+
+.btn-hover-primary:hover {
+    color: var(--primary-color);
+    background-color: rgba(24, 119, 242, 0.1);
+}
+
+/* Custom badge variants */
+.badge-reputation {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.badge-admin {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.badge-moderator {
+    background-color: var(--warning-color);
+    color: black;
+}
+
+/* Code blocks in posts */
+pre {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 12px;
+    overflow-x: auto;
+}
+
+code {
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+/* Quote styling */
+blockquote {
+    border-left: 4px solid var(--primary-color);
+    padding-left: 16px;
+    margin-left: 0;
+    color: #6c757d;
+    font-style: italic;
+}
