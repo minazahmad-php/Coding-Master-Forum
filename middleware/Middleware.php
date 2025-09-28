@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Core;
+namespace Middleware;
 
 abstract class Middleware {
     abstract public function handle(): bool;
@@ -21,7 +21,7 @@ abstract class Middleware {
 
 class AuthMiddleware extends Middleware {
     public function handle(): bool {
-        if (!Auth::isLoggedIn()) {
+        if (!\Core\Auth::isLoggedIn()) {
             if ($this->isApiRequest()) {
                 $this->jsonResponse(['error' => 'Unauthorized'], 401);
             } else {
@@ -39,7 +39,7 @@ class AuthMiddleware extends Middleware {
 
 class AdminMiddleware extends Middleware {
     public function handle(): bool {
-        if (!Auth::isAdmin()) {
+        if (!\Core\Auth::isAdmin()) {
             if ($this->isApiRequest()) {
                 $this->jsonResponse(['error' => 'Forbidden'], 403);
             } else {
@@ -57,7 +57,7 @@ class AdminMiddleware extends Middleware {
 
 class ModeratorMiddleware extends Middleware {
     public function handle(): bool {
-        if (!Auth::isModerator()) {
+        if (!\Core\Auth::isModerator()) {
             if ($this->isApiRequest()) {
                 $this->jsonResponse(['error' => 'Forbidden'], 403);
             } else {
@@ -75,7 +75,7 @@ class ModeratorMiddleware extends Middleware {
 
 class CsrfMiddleware extends Middleware {
     public function handle(): bool {
-        if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE'])) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT' || $_SERVER['REQUEST_METHOD'] === 'DELETE') {
             $token = $_POST[CSRF_TOKEN_NAME] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
             
             if (!verifyCsrfToken($token)) {
@@ -149,7 +149,7 @@ class MaintenanceMiddleware extends Middleware {
         
         if (file_exists($maintenanceFile)) {
             // Allow admin users to access during maintenance
-            if (Auth::isAdmin()) {
+            if (\Core\Auth::isAdmin()) {
                 return true;
             }
             
@@ -186,7 +186,7 @@ class LoggingMiddleware extends Middleware {
             'uri' => $_SERVER['REQUEST_URI'],
             'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-            'user_id' => Auth::getUserId(),
+            'user_id' => \Core\Auth::getUserId(),
             'referer' => $_SERVER['HTTP_REFERER'] ?? ''
         ];
         
@@ -238,43 +238,6 @@ class CorsMiddleware extends Middleware {
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             http_response_code(200);
             exit;
-        }
-    }
-}
-
-// Legacy middleware functions for backward compatibility
-class LegacyMiddleware {
-    public static function auth(): void {
-        if (!Auth::isLoggedIn()) {
-            header('Location: /login');
-            exit;
-        }
-    }
-    
-    public static function guest(): void {
-        if (Auth::isLoggedIn()) {
-            header('Location: /');
-            exit;
-        }
-    }
-    
-    public static function admin(): void {
-        if (!Auth::isAdmin()) {
-            header('Location: /');
-            exit;
-        }
-    }
-    
-    public static function moderator(): void {
-        if (!Auth::isModerator()) {
-            header('Location: /');
-            exit;
-        }
-    }
-    
-    public static function csrf(string $token): void {
-        if (!verifyCsrfToken($token)) {
-            die('CSRF token validation failed');
         }
     }
 }

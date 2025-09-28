@@ -1,41 +1,80 @@
-# Ignore storage files (except .gitkeep)
-/storage/*
-!/storage/.gitkeep
-/storage/logs/*
-!/storage/logs/.gitkeep
-/storage/cache/*
-!/storage/cache/.gitkeep
+# Dependencies
+/vendor/
+/node_modules/
 
-# Ignore uploads
-/public/uploads/*
-!/public/uploads/.gitkeep
+# Storage and logs
+/storage/logs/*.log
+/storage/cache/*.cache
+/storage/forum.sqlite
+/storage/installed.lock
+/storage/maintenance.lock
 
-# Ignore IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
+# Uploads
+/public/uploads/avatars/*
+/public/uploads/attachments/*
+!/public/uploads/avatars/.gitkeep
+!/public/uploads/attachments/.gitkeep
 
-# Ignore OS files
-.DS_Store
-Thumbs.db
-
-# Ignore log files
-*.log
-
-# Ignore environment files
+# Environment files
 .env
 .env.local
 .env.production
 
-# Ignore composer files (if using composer)
-vendor/
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*.sql
+
+# Test files
+/tests/coverage/
+/coverage/
+.phpunit.result.cache
+
+# Build files
+/build/
+/dist/
+
+# Temporary files
+/tmp/
+/temp/
+
+# Composer
 composer.lock
 
-# Ignore backup files
-*.backup
-*.bak
+# Package files
+package-lock.json
+yarn.lock
 
-# Ignore database backups
-*.sql
-*.sqlite
+# Documentation
+/docs/build/
+
+# Error logs
+error.log
+access.log
+
+# Cache files
+*.cache
+*.tmp
+
+# Session files
+sess_*
+
+# PHP specific
+*.php~
+*.php.bak
+
+# Configuration overrides
+config.local.php
+config.production.php

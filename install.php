@@ -1,9 +1,19 @@
 <?php
 declare(strict_types=1);
+
+// Installation script for Coding Master Forum
 ini_set('display_errors', '1');
 error_reporting(E_ALL);
 
 session_start();
+
+// Check if already installed
+$storageDir = __DIR__ . '/storage';
+$lockFile = $storageDir . '/installed.lock';
+
+if (file_exists($lockFile)) {
+    die("<h2>🚫 Forum already installed. Delete storage/installed.lock to reinstall.</h2>");
+}
 
 $storageDir = __DIR__ . '/storage';
 if (!is_dir($storageDir)) {
