@@ -1,28 +1,70 @@
 <?php
+declare(strict_types=1);
 
-//public/index.php
+/**
+ * Modern Forum - Main Entry Point
+ * Handles all requests and routes them to appropriate controllers
+ */
 
-require_once '../config.php';
+// Start session
+session_start();
 
-// Include core files
+// Load configuration
+require_once __DIR__ . '/config.php';
+
+// Load core classes
+require_once CORE_PATH . '/Router.php';
 require_once CORE_PATH . '/Database.php';
 require_once CORE_PATH . '/Auth.php';
-require_once CORE_PATH . '/Router.php';
+require_once CORE_PATH . '/Session.php';
+require_once CORE_PATH . '/Mail.php';
+require_once CORE_PATH . '/Logger.php';
 require_once CORE_PATH . '/Functions.php';
-require_once CORE_PATH . '/Middleware.php';
 
-// Include models
-require_once MODELS_PATH . '/User.php';
-require_once MODELS_PATH . '/Forum.php';
-require_once MODELS_PATH . '/Thread.php';
-require_once MODELS_PATH . '/Post.php';
-require_once MODELS_PATH . '/Message.php';
-require_once MODELS_PATH . '/Notification.php';
-
-// Check if API request
-if (strpos($_SERVER['REQUEST_URI'], '/api/') === 0) {
-    require_once ROUTES_PATH . '/api.php';
-} else {
-    require_once ROUTES_PATH . '/web.php';
+// Load environment variables
+if (file_exists(__DIR__ . '/.env')) {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+    $dotenv->load();
 }
-?>
+
+// Initialize services
+use Core\Database;
+use Core\Session;
+use Core\Logger;
+use Core\Mail;
+
+try {
+    // Initialize database
+    $db = Database::getInstance();
+    
+    // Initialize session
+    $session = new Session();
+    $session->start();
+    
+    // Initialize logger
+    $logger = new Logger();
+    
+    // Initialize mail service
+    $mail = new Mail();
+    
+    // Load routes
+    require_once ROUTES_PATH . '/index.php';
+    
+} catch (Exception $e) {
+    // Log error
+    error_log("Application initialization error: " . $e->getMessage());
+    
+    // Show error page
+    http_response_code(500);
+    
+    if (defined('APP_DEBUG') && APP_DEBUG) {
+        echo "<h1>Application Error</h1>";
+        echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
+        echo "<pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+    } else {
+        echo "<h1>Something went wrong</h1>";
+        echo "<p>Please try again later.</p>";
+    }
+    
+    exit;
+}

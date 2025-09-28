@@ -1,415 +1,416 @@
 <?php
 declare(strict_types=1);
 
-// Installation script for Coding Master Forum
-ini_set('display_errors', '1');
+/**
+ * Modern Forum - Complete Installation Script
+ * One-click installation for the most advanced forum platform
+ */
+
+// Prevent direct access
+if (!defined('INSTALLATION_MODE')) {
+    define('INSTALLATION_MODE', true);
+}
+
+// Set error reporting for installation
 error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-session_start();
+// Start output buffering for progress display
+ob_start();
 
-// Check if already installed
-$storageDir = __DIR__ . '/storage';
-$lockFile = $storageDir . '/installed.lock';
-
-if (file_exists($lockFile)) {
-    die("<h2>🚫 Forum already installed. Delete storage/installed.lock to reinstall.</h2>");
-}
-
-$storageDir = __DIR__ . '/storage';
-if (!is_dir($storageDir)) {
-    mkdir($storageDir, 0755, true);
-}
-
-$lockFile = $storageDir . '/installed.lock';
-$dbFile = $storageDir . '/forum.sqlite';
-
-if (file_exists($lockFile)) {
-    die("<h2>🚫 Forum already installed. Delete storage/installed.lock to reinstall.</h2>");
-}
-
-// Connect SQLite
-try {
-    $pdo = new PDO("sqlite:" . $dbFile);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    // Enable foreign key support in SQLite
-    $pdo->exec('PRAGMA foreign_keys = ON;');
-} catch(PDOException $e) {
-    die("DB Connection failed: ".$e->getMessage());
-}
-
-// Enterprise tables and supporting indexes/triggers
-$statements = [
-    // Users Table
-    "CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        role TEXT DEFAULT 'user' CHECK(role IN ('user', 'moderator', 'admin')),
-        full_name TEXT,
-        bio TEXT,
-        avatar TEXT DEFAULT 'default-avatar.png',
-        cover TEXT,
-        location TEXT,
-        website TEXT,
-        birthday DATE,
-        gender TEXT,
-        status TEXT DEFAULT 'active' CHECK(status IN ('active', 'banned', 'pending')),
-        reputation INTEGER DEFAULT 0,
-        posts_count INTEGER DEFAULT 0,
-        threads_count INTEGER DEFAULT 0,
-        last_login DATETIME,
-        login_ip TEXT,
-        email_verified INTEGER DEFAULT 0,
-        two_factor_secret TEXT,
-        reset_token TEXT,
-        reset_expires DATETIME,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )",
-    "CREATE INDEX IF NOT EXISTS idx_users_username ON users (username)",
-    "CREATE INDEX IF NOT EXISTS idx_users_email ON users (email)",
-
-    // Forums Table
-    "CREATE TABLE IF NOT EXISTS forums (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        description TEXT,
-        icon TEXT,
-        slug TEXT UNIQUE NOT NULL,
-        threads_count INTEGER DEFAULT 0,
-        posts_count INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )",
-    "CREATE INDEX IF NOT EXISTS idx_forums_slug ON forums (slug)",
-
-    // Threads Table
-    "CREATE TABLE IF NOT EXISTS threads (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        forum_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        content TEXT,
-        views INTEGER DEFAULT 0,
-        replies_count INTEGER DEFAULT 0,
-        is_locked INTEGER DEFAULT 0,
-        is_pinned INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (forum_id) REFERENCES forums(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-    )",
-    "CREATE INDEX IF NOT EXISTS idx_threads_forum_id ON threads (forum_id)",
-    "CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads (user_id)",
-
-    // Posts Table
-    "CREATE TABLE IF NOT EXISTS posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        thread_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        is_edited INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-    )",
-    "CREATE INDEX IF NOT EXISTS idx_posts_thread_id ON posts (thread_id)",
-    "CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts (user_id)",
-    
-    // Tags and Thread-Tags Tables (New Feature)
-    "CREATE TABLE IF NOT EXISTS tags (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        slug TEXT UNIQUE NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )",
-    "CREATE TABLE IF NOT EXISTS thread_tags (
-        thread_id INTEGER NOT NULL,
-        tag_id INTEGER NOT NULL,
-        PRIMARY KEY (thread_id, tag_id),
-        FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE,
-        FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-    )",
-
-    // Messages Table
-    "CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sender_id INTEGER NOT NULL,
-        receiver_id INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        is_read INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
-    )",
-    "CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver ON messages (sender_id, receiver_id)",
-
-    // Notifications Table
-    "CREATE TABLE IF NOT EXISTS notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        message TEXT NOT NULL,
-        link TEXT,
-        is_read INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )",
-
-    // Settings Table
-    "CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        value TEXT
-    )",
-
-    // Reactions (Likes/Dislikes) Table
-    "CREATE TABLE IF NOT EXISTS reactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        target_type TEXT NOT NULL,
-        target_id INTEGER NOT NULL,
-        reaction_type TEXT NOT NULL CHECK(reaction_type IN ('like', 'dislike')),
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE (user_id, target_type, target_id),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )",
-    "CREATE INDEX IF NOT EXISTS idx_reactions_target ON reactions (target_type, target_id)",
-
-    // Badges & User_Badges Tables
-    "CREATE TABLE IF NOT EXISTS badges (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        description TEXT,
-        icon TEXT
-    )",
-    "CREATE TABLE IF NOT EXISTS user_badges (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        badge_id INTEGER NOT NULL,
-        granted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (badge_id) REFERENCES badges(id) ON DELETE CASCADE
-    )",
-
-    // Other tables...
-    "CREATE TABLE IF NOT EXISTS attachments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        post_id INTEGER,
-        thread_id INTEGER,
-        file_path TEXT NOT NULL,
-        file_type TEXT,
-        file_size INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )",
-    "CREATE TABLE IF NOT EXISTS reports (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        reporter_id INTEGER NOT NULL,
-        target_type TEXT NOT NULL,
-        target_id INTEGER NOT NULL,
-        reason TEXT NOT NULL,
-        status TEXT DEFAULT 'pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
-    )",
-    "CREATE TABLE IF NOT EXISTS logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        action TEXT NOT NULL,
-        target_type TEXT,
-        target_id INTEGER,
-        details TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-    )",
-    "CREATE TABLE IF NOT EXISTS polls (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        thread_id INTEGER UNIQUE NOT NULL,
-        question TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE
-    )",
-    "CREATE TABLE IF NOT EXISTS poll_options (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        poll_id INTEGER NOT NULL,
-        option_text TEXT NOT NULL,
-        votes INTEGER DEFAULT 0,
-        FOREIGN KEY (poll_id) REFERENCES polls(id) ON DELETE CASCADE
-    )",
-    "CREATE TABLE IF NOT EXISTS poll_votes (
-        poll_id INTEGER NOT NULL,
-        option_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (poll_id, user_id),
-        FOREIGN KEY (poll_id) REFERENCES polls(id) ON DELETE CASCADE,
-        FOREIGN KEY (option_id) REFERENCES poll_options(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )",
-    "CREATE TABLE IF NOT EXISTS friendships (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        requester_id INTEGER NOT NULL,
-        receiver_id INTEGER NOT NULL,
-        status TEXT DEFAULT 'pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
-    )",
-    "CREATE TABLE IF NOT EXISTS sessions (
-        id TEXT PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        ip_address TEXT,
-        user_agent TEXT,
-        last_active DATETIME NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )",
-    "CREATE TABLE IF NOT EXISTS api_keys (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        api_key TEXT UNIQUE NOT NULL,
-        permissions TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        expires_at DATETIME,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )",
-
-    // Triggers to auto-update 'updated_at' timestamps
-    "CREATE TRIGGER IF NOT EXISTS update_users_updated_at
-         AFTER UPDATE ON users FOR EACH ROW
-         BEGIN
-             UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
-         END;",
-    "CREATE TRIGGER IF NOT EXISTS update_threads_updated_at
-         AFTER UPDATE ON threads FOR EACH ROW
-         BEGIN
-             UPDATE threads SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
-         END;",
-    "CREATE TRIGGER IF NOT EXISTS update_posts_updated_at
-         AFTER UPDATE ON posts FOR EACH ROW
-         BEGIN
-             UPDATE posts SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
-         END;"
-];
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-
-    if ($username && $email && $password && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        try {
-            // Create tables with live feedback
-            $results = [];
-            foreach ($statements as $sql) {
-                // Extract table/index/trigger name for logging
-                preg_match('/CREATE (?:TABLE|INDEX|TRIGGER)(?: IF NOT EXISTS)?\s+([^\s(]+)/i', $sql, $matches);
-                $name = $matches[1] ?? 'statement';
-                
-                try {
-                    $pdo->exec($sql);
-                    $results[] = "✅ {$name} created/exists.";
-                } catch(Exception $e) {
-                    $results[] = "❌ Error creating {$name}: ".$e->getMessage();
-                }
-            }
-
-            // Insert admin
-            $hash = password_hash($password, PASSWORD_BCRYPT);
-            // CORRECTED: Parameter count now matches column count (4)
-            $stmt = $pdo->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$username, $email, $hash, 'admin']);
-
-            // Save a default setting
-            $pdo->prepare("INSERT INTO settings (name, value) VALUES ('site_name', 'Coding Master')")->execute();
-
-            // Lock install
-            file_put_contents($lockFile, "Installed on ".date("Y-m-d H:i:s"));
-
-            echo json_encode(["success"=>true, "messages"=>$results]);
-            exit;
-        } catch (Exception $e) {
-            echo json_encode(["success"=>false, "messages"=>["An error occurred: " . $e->getMessage()]]);
-            exit;
-        }
-    } else {
-        $errors = [];
-        if (empty($username)) $errors[] = "Admin Username is required.";
-        if (empty($email)) $errors[] = "Admin Email is required.";
-        elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Admin Email is not valid.";
-        if (empty($password)) $errors[] = "Admin Password is required.";
-        
-        echo json_encode(["success"=>false, "messages"=>$errors]);
-        exit;
-    }
-}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coding Master Installer</title>
-<style>
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; color: #1c1e21; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-.installer-box { background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.1); padding: 20px; width: 100%; max-width: 450px; }
-h2 { text-align: center; color: #1877f2; }
-form { display: flex; flex-direction: column; gap: 15px; }
-label { font-weight: bold; }
-input { padding: 12px; font-size: 16px; border: 1px solid #dddfe2; border-radius: 6px; }
-input:focus { border-color: #1877f2; outline: none; }
-button { padding: 12px; font-size: 16px; background: #1877f2; color: #fff; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; }
-button:hover { background: #166fe5; }
-#status { margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 0.9em; background: #f7f7f7; }
-#status a { color: #1877f2; text-decoration: none; font-weight: bold; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Forum - Installation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .install-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+        .install-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .install-button {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .log-container {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .log-success { color: #38a169; }
+        .log-error { color: #e53e3e; }
+        .log-info { color: #3182ce; }
+        .hidden { display: none; }
+    </style>
 </head>
 <body>
-<div class="installer-box">
-    <h2>Coding Master Forum Installer</h2>
-    <form id="installForm">
-        <label for="username">Admin Username</label>
-        <input type="text" id="username" name="username" required>
-        <label for="email">Admin Email</label>
-        <input type="email" id="email" name="email" required>
-        <label for="password">Admin Password</label>
-        <input type="password" id="password" name="password" required>
-        <button type="submit">Install Forum</button>
-    </form>
-    <div id="status"></div>
-</div>
+    <div class="install-container">
+        <h1 class="install-title">🚀 Modern Forum Installation</h1>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <button class="install-button" id="installButton" onclick="startInstallation()">
+            Install Modern Forum
+        </button>
+        
+        <div class="log-container" id="logContainer">
+            <div class="log-info">Ready to install Modern Forum...</div>
+        </div>
+    </div>
 
-<script>
-document.getElementById('installForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const statusDiv = document.getElementById('status');
-    const button = this.querySelector('button');
-    statusDiv.innerHTML = 'Installing...<br>';
-    button.disabled = true;
-    button.textContent = 'Installing...';
-
-    const formData = new FormData(this);
-    fetch('install.php', { method: 'POST', body: formData })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            data.messages.forEach(m => statusDiv.innerHTML += m + '<br>');
-            statusDiv.innerHTML += '<br><b>✅ Installation successful!</b> <a href="index.php">Go to Forum</a>';
-            // Hide form on success
-            document.getElementById('installForm').style.display = 'none';
-        } else {
-            statusDiv.innerHTML = '<span style="color:red;"><b>Installation failed:</b></span><br>';
-            data.messages.forEach(m => statusDiv.innerHTML += '❌ ' + m + '<br>');
+    <script>
+        async function startInstallation() {
+            const button = document.getElementById('installButton');
+            const progressFill = document.getElementById('progressFill');
+            const logContainer = document.getElementById('logContainer');
+            
+            button.disabled = true;
+            button.textContent = 'Installing...';
+            
+            function addLog(message, type = 'info') {
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-${type}`;
+                logEntry.textContent = message;
+                logContainer.appendChild(logEntry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+            
+            function updateProgress(percent) {
+                progressFill.style.width = percent + '%';
+            }
+            
+            try {
+                // Step 1: Check requirements
+                updateProgress(20);
+                addLog('Checking requirements...', 'info');
+                
+                const req = await fetch('/install.php?step=requirements');
+                const reqResult = await req.json();
+                
+                if (!reqResult.success) {
+                    throw new Error(reqResult.message);
+                }
+                addLog('✓ Requirements check passed', 'success');
+                
+                // Step 2: Create directories
+                updateProgress(40);
+                addLog('Creating directories...', 'info');
+                
+                const dir = await fetch('/install.php?step=directories');
+                const dirResult = await dir.json();
+                
+                if (!dirResult.success) {
+                    throw new Error(dirResult.message);
+                }
+                addLog('✓ Directories created', 'success');
+                
+                // Step 3: Setup database
+                updateProgress(60);
+                addLog('Setting up database...', 'info');
+                
+                const db = await fetch('/install.php?step=database');
+                const dbResult = await db.json();
+                
+                if (!dbResult.success) {
+                    throw new Error(dbResult.message);
+                }
+                addLog('✓ Database setup completed', 'success');
+                
+                // Step 4: Create admin user
+                updateProgress(80);
+                addLog('Creating admin user...', 'info');
+                
+                const admin = await fetch('/install.php?step=admin');
+                const adminResult = await admin.json();
+                
+                if (!adminResult.success) {
+                    throw new Error(adminResult.message);
+                }
+                addLog('✓ Admin user created', 'success');
+                
+                // Step 5: Finalize
+                updateProgress(100);
+                addLog('Finalizing installation...', 'info');
+                
+                const final = await fetch('/install.php?step=finalize');
+                const finalResult = await final.json();
+                
+                if (!finalResult.success) {
+                    throw new Error(finalResult.message);
+                }
+                addLog('✓ Installation completed!', 'success');
+                
+                button.textContent = 'Installation Complete!';
+                button.onclick = () => window.location.href = '/admin';
+                
+            } catch (error) {
+                addLog('✗ Installation failed: ' + error.message, 'error');
+                button.disabled = false;
+                button.textContent = 'Installation Failed - Try Again';
+            }
         }
-    }).catch(err => {
-        statusDiv.innerHTML = 'An unexpected error occurred: ' + err;
-    }).finally(() => {
-        button.disabled = false;
-        button.textContent = 'Install Forum';
-    });
-});
-</script>
+    </script>
 </body>
 </html>
+<?php
+
+// Handle AJAX requests
+if (isset($_GET['step'])) {
+    header('Content-Type: application/json');
+    
+    try {
+        $installer = new ModernForumInstaller();
+        $result = $installer->handleStep($_GET['step']);
+        echo json_encode($result);
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+    exit;
+}
+
+class ModernForumInstaller
+{
+    private array $config = [];
+    private string $basePath;
+    
+    public function __construct()
+    {
+        $this->basePath = dirname(__DIR__);
+        $this->loadConfig();
+    }
+    
+    private function loadConfig(): void
+    {
+        $this->config = [
+            'app_name' => 'Modern Forum',
+            'app_url' => $this->getBaseUrl(),
+            'app_key' => $this->generateAppKey(),
+            'db_database' => $this->basePath . '/storage/forum.sqlite',
+            'admin_username' => 'admin',
+            'admin_password' => 'admin123',
+            'admin_email' => 'admin@example.com',
+        ];
+    }
+    
+    public function handleStep(string $step): array
+    {
+        switch ($step) {
+            case 'requirements':
+                return $this->checkRequirements();
+            case 'directories':
+                return $this->createDirectories();
+            case 'database':
+                return $this->setupDatabase();
+            case 'admin':
+                return $this->createAdminUser();
+            case 'finalize':
+                return $this->finalizeInstallation();
+            default:
+                throw new Exception('Invalid installation step');
+        }
+    }
+    
+    private function checkRequirements(): array
+    {
+        $requirements = [
+            'PHP Version >= 8.1' => version_compare(PHP_VERSION, '8.1.0', '>='),
+            'PDO Extension' => extension_loaded('pdo'),
+            'PDO SQLite' => extension_loaded('pdo_sqlite'),
+            'JSON Extension' => extension_loaded('json'),
+            'File System Write Access' => is_writable($this->basePath),
+        ];
+        
+        $failed = array_filter($requirements, fn($check) => !$check);
+        
+        if (!empty($failed)) {
+            throw new Exception('Requirements check failed: ' . implode(', ', array_keys($failed)));
+        }
+        
+        return ['success' => true];
+    }
+    
+    private function createDirectories(): array
+    {
+        $directories = [
+            $this->basePath . '/storage',
+            $this->basePath . '/storage/database',
+            $this->basePath . '/storage/logs',
+            $this->basePath . '/storage/cache',
+            $this->basePath . '/storage/uploads',
+            $this->basePath . '/storage/uploads/avatars',
+            $this->basePath . '/storage/uploads/posts',
+        ];
+        
+        foreach ($directories as $dir) {
+            if (!is_dir($dir)) {
+                if (!mkdir($dir, 0755, true)) {
+                    throw new Exception("Failed to create directory: $dir");
+                }
+            }
+        }
+        
+        return ['success' => true];
+    }
+    
+    private function setupDatabase(): array
+    {
+        $dbPath = $this->config['db_database'];
+        
+        if (!file_exists($dbPath)) {
+            touch($dbPath);
+            chmod($dbPath, 0644);
+        }
+        
+        require_once $this->basePath . '/migrations/create_core_tables.php';
+        
+        return ['success' => true];
+    }
+    
+    private function createAdminUser(): array
+    {
+        $dbPath = $this->config['db_database'];
+        $pdo = new PDO("sqlite:$dbPath");
+        
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+        $stmt->execute([$this->config['admin_username']]);
+        
+        if ($stmt->fetch()) {
+            return ['success' => true, 'message' => 'Admin user already exists'];
+        }
+        
+        $hashedPassword = password_hash($this->config['admin_password'], PASSWORD_ARGON2ID);
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO users (
+                username, email, password, first_name, last_name, 
+                role, status, email_verified_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        
+        $now = date('Y-m-d H:i:s');
+        $result = $stmt->execute([
+            $this->config['admin_username'],
+            $this->config['admin_email'],
+            $hashedPassword,
+            'Admin',
+            'User',
+            'admin',
+            'active',
+            $now,
+            $now,
+            $now
+        ]);
+        
+        if (!$result) {
+            throw new Exception('Failed to create admin user');
+        }
+        
+        return ['success' => true];
+    }
+    
+    private function finalizeInstallation(): array
+    {
+        $envContent = "APP_NAME=\"{$this->config['app_name']}\"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL={$this->config['app_url']}
+APP_KEY={$this->config['app_key']}
+
+DB_CONNECTION=sqlite
+DB_DATABASE={$this->config['db_database']}
+
+SESSION_NAME=FORUM_SESSION
+SESSION_LIFETIME=86400
+
+MAIL_DRIVER=smtp
+MAIL_HOST=smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=hello@example.com
+MAIL_FROM_NAME=\"Modern Forum\"
+
+ADMIN_USERNAME={$this->config['admin_username']}
+ADMIN_EMAIL={$this->config['admin_email']}
+";
+        
+        $envFile = $this->basePath . '/.env';
+        
+        if (!file_put_contents($envFile, $envContent)) {
+            throw new Exception('Failed to create .env file');
+        }
+        
+        chmod($envFile, 0600);
+        
+        return ['success' => true];
+    }
+    
+    private function generateAppKey(): string
+    {
+        return base64_encode(random_bytes(32));
+    }
+    
+    private function getBaseUrl(): string
+    {
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $path = dirname($_SERVER['SCRIPT_NAME']);
+        
+        return $protocol . '://' . $host . $path;
+    }
+}
