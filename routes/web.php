@@ -219,9 +219,92 @@ $router->group(['middleware' => ['SecurityHeadersMiddleware', 'LoggingMiddleware
         $router->get('/admin/stats/posts', 'AdminController@postStats');
         $router->get('/admin/stats/forums', 'AdminController@forumStats');
         
+        // Analytics Dashboard
+        $router->get('/admin/analytics', 'AnalyticsController@dashboard');
+        $router->get('/admin/analytics/user', 'AnalyticsController@userAnalytics');
+        $router->get('/admin/analytics/content', 'AnalyticsController@contentAnalytics');
+        $router->get('/admin/analytics/traffic', 'AnalyticsController@trafficAnalytics');
+        $router->get('/admin/analytics/engagement', 'AnalyticsController@engagementAnalytics');
+        $router->get('/admin/analytics/conversion', 'AnalyticsController@conversionAnalytics');
+        $router->get('/admin/analytics/revenue', 'AnalyticsController@revenueAnalytics');
+        $router->get('/admin/analytics/performance', 'AnalyticsController@performanceAnalytics');
+        $router->get('/admin/analytics/export', 'AnalyticsController@exportAnalytics');
+        
         // Search Analytics
         $router->get('/admin/search-analytics', 'SearchController@analytics');
         $router->get('/admin/search-analytics/export', 'SearchController@export');
+        
+        // Integrations Management
+        $router->get('/admin/integrations', 'IntegrationController@dashboard');
+        $router->get('/admin/integrations/social-media', 'IntegrationController@socialMedia');
+        $router->get('/admin/integrations/payment-gateway', 'IntegrationController@paymentGateway');
+        $router->get('/admin/integrations/email-service', 'IntegrationController@emailService');
+        $router->get('/admin/integrations/sms-service', 'IntegrationController@smsService');
+        $router->get('/admin/integrations/api-management', 'IntegrationController@apiManagement');
+        $router->get('/admin/integrations/cloud-storage', 'IntegrationController@cloudStorage');
+        $router->get('/admin/integrations/cdn-service', 'IntegrationController@cdnService');
+        $router->get('/admin/integrations/monitoring-service', 'IntegrationController@monitoringService');
+        $router->get('/admin/integrations/backup-service', 'IntegrationController@backupService');
+        
+        // Theme Management
+        $router->get('/admin/themes', 'AdminController@themes');
+        $router->get('/admin/themes/create', 'AdminController@showCreateTheme');
+        $router->post('/admin/themes/create', 'AdminController@createTheme');
+        $router->get('/admin/themes/{id}/edit', 'AdminController@showEditTheme');
+        $router->post('/admin/themes/{id}/edit', 'AdminController@editTheme');
+        $router->post('/admin/themes/{id}/activate', 'AdminController@activateTheme');
+        $router->delete('/admin/themes/{id}', 'AdminController@deleteTheme');
+        
+        // Plugin Management
+        $router->get('/admin/plugins', 'AdminController@plugins');
+        $router->get('/admin/plugins/create', 'AdminController@showCreatePlugin');
+        $router->post('/admin/plugins/create', 'AdminController@createPlugin');
+        $router->get('/admin/plugins/{id}/edit', 'AdminController@showEditPlugin');
+        $router->post('/admin/plugins/{id}/edit', 'AdminController@editPlugin');
+        $router->post('/admin/plugins/{plugin}/activate', 'AdminController@activatePlugin');
+        $router->post('/admin/plugins/{plugin}/deactivate', 'AdminController@deactivatePlugin');
+        $router->delete('/admin/plugins/{id}', 'AdminController@deletePlugin');
+        
+        // Payment Management
+        $router->get('/admin/payments', 'AdminController@payments');
+        $router->get('/admin/payments/{id}', 'AdminController@showPayment');
+        $router->post('/admin/payments/{id}/refund', 'AdminController@refundPayment');
+        $router->get('/admin/subscriptions', 'AdminController@subscriptions');
+        $router->post('/admin/subscriptions/{id}/cancel', 'AdminController@cancelSubscription');
+        
+        // Language Management
+        $router->get('/admin/languages', 'AdminController@languages');
+        $router->get('/admin/languages/create', 'AdminController@showCreateLanguage');
+        $router->post('/admin/languages/create', 'AdminController@createLanguage');
+        $router->get('/admin/languages/{id}/edit', 'AdminController@showEditLanguage');
+        $router->post('/admin/languages/{id}/edit', 'AdminController@editLanguage');
+        $router->post('/admin/languages/{id}/activate', 'AdminController@activateLanguage');
+        $router->delete('/admin/languages/{id}', 'AdminController@deleteLanguage');
+        
+        // Translation Management
+        $router->get('/admin/translations', 'AdminController@translations');
+        $router->get('/admin/translations/{language}', 'AdminController@showTranslations');
+        $router->post('/admin/translations/{language}', 'AdminController@updateTranslations');
+        $router->post('/admin/translations/import', 'AdminController@importTranslations');
+        $router->get('/admin/translations/export/{language}', 'AdminController@exportTranslations');
+        
+        // Security Management
+        $router->get('/admin/security', 'AdminController@security');
+        $router->get('/admin/security/logs', 'AdminController@securityLogs');
+        $router->get('/admin/security/blocked-ips', 'AdminController@blockedIPs');
+        $router->post('/admin/security/block-ip', 'AdminController@blockIP');
+        $router->post('/admin/security/unblock-ip', 'AdminController@unblockIP');
+        $router->get('/admin/security/alerts', 'AdminController@securityAlerts');
+        $router->post('/admin/security/alerts/{id}/resolve', 'AdminController@resolveSecurityAlert');
+        
+        // API Management
+        $router->get('/admin/api', 'AdminController@api');
+        $router->get('/admin/api/keys', 'AdminController@apiKeys');
+        $router->get('/admin/api/keys/create', 'AdminController@showCreateApiKey');
+        $router->post('/admin/api/keys/create', 'AdminController@createApiKey');
+        $router->delete('/admin/api/keys/{id}', 'AdminController@deleteApiKey');
+        $router->get('/admin/api/usage', 'AdminController@apiUsage');
+        $router->get('/admin/api/logs', 'AdminController@apiLogs');
         
         // Maintenance
         $router->get('/admin/maintenance', 'AdminController@maintenance');
@@ -231,10 +314,11 @@ $router->group(['middleware' => ['SecurityHeadersMiddleware', 'LoggingMiddleware
         $router->post('/admin/maintenance/optimize', 'AdminController@optimizeDatabase');
         $router->post('/admin/maintenance/clear-cache', 'AdminController@clearCache');
         
-        // Plugins
-        $router->get('/admin/plugins', 'AdminController@plugins');
-        $router->post('/admin/plugins/{plugin}/activate', 'AdminController@activatePlugin');
-        $router->post('/admin/plugins/{plugin}/deactivate', 'AdminController@deactivatePlugin');
+        // System Information
+        $router->get('/admin/system', 'AdminController@system');
+        $router->get('/admin/system/info', 'AdminController@systemInfo');
+        $router->get('/admin/system/logs', 'AdminController@systemLogs');
+        $router->get('/admin/system/performance', 'AdminController@systemPerformance');
         
     });
     
