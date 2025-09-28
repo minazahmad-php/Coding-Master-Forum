@@ -50,6 +50,9 @@ $router->group(['middleware' => ['SecurityHeadersMiddleware', 'LoggingMiddleware
     $router->get('/search', 'SearchController@index');
     $router->get('/search/advanced', 'SearchController@advanced');
     $router->post('/search', 'SearchController@search');
+    $router->get('/search/suggestions', 'SearchController@suggestions');
+    $router->post('/search/track-click', 'SearchController@trackClick');
+    $router->post('/search/track-duration', 'SearchController@trackDuration');
     
     // User routes
     $router->get('/users', 'UserController@index');
@@ -215,6 +218,10 @@ $router->group(['middleware' => ['SecurityHeadersMiddleware', 'LoggingMiddleware
         $router->get('/admin/stats/users', 'AdminController@userStats');
         $router->get('/admin/stats/posts', 'AdminController@postStats');
         $router->get('/admin/stats/forums', 'AdminController@forumStats');
+        
+        // Search Analytics
+        $router->get('/admin/search-analytics', 'SearchController@analytics');
+        $router->get('/admin/search-analytics/export', 'SearchController@export');
         
         // Maintenance
         $router->get('/admin/maintenance', 'AdminController@maintenance');

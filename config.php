@@ -82,6 +82,12 @@ define('GOOGLE_ANALYTICS_ID', 'your_ga_id');
 define('GOOGLE_TAG_MANAGER_ID', 'your_gtm_id');
 define('FACEBOOK_PIXEL_ID', 'your_fb_pixel_id');
 
+// Elasticsearch settings
+define('ELASTICSEARCH_ENABLED', false);
+define('ELASTICSEARCH_HOST', 'localhost');
+define('ELASTICSEARCH_PORT', 9200);
+define('ELASTICSEARCH_INDEX', 'forum');
+
 // Path constants
 define('ROOT_PATH', __DIR__);
 define('CORE_PATH', ROOT_PATH . '/core');
