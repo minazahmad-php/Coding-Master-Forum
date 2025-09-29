@@ -53,6 +53,10 @@ $router->group(['middleware' => ['SecurityHeadersMiddleware', 'LoggingMiddleware
     $router->get('/search/suggestions', 'SearchController@suggestions');
     $router->post('/search/track-click', 'SearchController@trackClick');
     $router->post('/search/track-duration', 'SearchController@trackDuration');
+
+    // Payment routes (public)
+    $router->get('/payments/plans', 'PaymentController@plans');
+    $router->post('/payments/webhook', 'PaymentController@webhook');
     
     // User routes
     $router->get('/users', 'UserController@index');
@@ -103,6 +107,15 @@ $router->group(['middleware' => ['SecurityHeadersMiddleware', 'LoggingMiddleware
         $router->post('/settings/change-password', 'UserController@changePassword');
         $router->post('/settings/enable-2fa', 'UserController@enable2FA');
         $router->post('/settings/disable-2fa', 'UserController@disable2FA');
+
+        // Payment routes (authenticated)
+        $router->get('/payments/dashboard', 'PaymentController@dashboard');
+        $router->get('/payments/history', 'PaymentController@paymentHistory');
+        $router->post('/payments/subscribe', 'PaymentController@subscribe');
+        $router->post('/payments/process', 'PaymentController@processPayment');
+        $router->post('/payments/cancel-subscription', 'PaymentController@cancelSubscription');
+        $router->post('/payments/update-payment-method', 'PaymentController@updatePaymentMethod');
+        $router->get('/payments/invoice/{id}', 'PaymentController@downloadInvoice');
         
         // Following system
         $router->post('/user/{id}/follow', 'UserController@follow');
@@ -233,6 +246,22 @@ $router->group(['middleware' => ['SecurityHeadersMiddleware', 'LoggingMiddleware
         // Search Analytics
         $router->get('/admin/search-analytics', 'SearchController@analytics');
         $router->get('/admin/search-analytics/export', 'SearchController@export');
+
+        // Advanced analytics routes
+        $router->get('/admin/analytics/advanced', 'AdvancedAnalyticsController@dashboard');
+        $router->get('/admin/analytics/user', 'AdvancedAnalyticsController@userAnalytics');
+        $router->get('/admin/analytics/content', 'AdvancedAnalyticsController@contentAnalytics');
+        $router->get('/admin/analytics/traffic', 'AdvancedAnalyticsController@trafficAnalytics');
+        $router->get('/admin/analytics/engagement', 'AdvancedAnalyticsController@engagementAnalytics');
+        $router->get('/admin/analytics/revenue', 'AdvancedAnalyticsController@revenueAnalytics');
+        $router->get('/admin/analytics/performance', 'AdvancedAnalyticsController@performanceAnalytics');
+        $router->get('/admin/analytics/export/{type}', 'AdvancedAnalyticsController@exportAnalytics');
+
+        // Admin payment management
+        $router->get('/admin/payments', 'PaymentController@adminDashboard');
+        $router->get('/admin/payments/list', 'PaymentController@adminPayments');
+        $router->get('/admin/payments/subscriptions', 'PaymentController@adminSubscriptions');
+        $router->post('/admin/payments/refund', 'PaymentController@adminRefundPayment');
         
         // Integrations Management
         $router->get('/admin/integrations', 'IntegrationController@dashboard');
