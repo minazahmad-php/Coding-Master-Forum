@@ -1,0 +1,2 @@
+# This file keeps the storage directory in Git
+# Actual storage files are ignored in .gitignore

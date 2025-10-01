@@ -1,0 +1,80 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Storage and logs
+/storage/logs/*.log
+/storage/cache/*.cache
+/storage/forum.sqlite
+/storage/installed.lock
+/storage/maintenance.lock
+
+# Uploads
+/public/uploads/avatars/*
+/public/uploads/attachments/*
+!/public/uploads/avatars/.gitkeep
+!/public/uploads/attachments/.gitkeep
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*.sql
+
+# Test files
+/tests/coverage/
+/coverage/
+.phpunit.result.cache
+
+# Build files
+/build/
+/dist/
+
+# Temporary files
+/tmp/
+/temp/
+
+# Composer
+composer.lock
+
+# Package files
+package-lock.json
+yarn.lock
+
+# Documentation
+/docs/build/
+
+# Error logs
+error.log
+access.log
+
+# Cache files
+*.cache
+*.tmp
+
+# Session files
+sess_*
+
+# PHP specific
+*.php~
+*.php.bak
+
+# Configuration overrides
+config.local.php
+config.production.php
