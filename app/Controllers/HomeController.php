@@ -346,4 +346,253 @@ class HomeController extends BaseController
         $result = $this->db->fetch($sql);
         return $result['count'];
     }
+
+    /**
+     * Show recent activity
+     */
+    public function recentActivity()
+    {
+        $threadModel = new Thread();
+        $postModel = new Post();
+        
+        $recentThreads = $threadModel->getRecent(20);
+        $recentPosts = $postModel->getRecent(20);
+        
+        $data = [
+            'recent_threads' => $recentThreads,
+            'recent_posts' => $recentPosts
+        ];
+        
+        echo $this->view->render('recent_activity', $data);
+    }
+
+    /**
+     * Show popular threads
+     */
+    public function popularThreads()
+    {
+        $threadModel = new Thread();
+        $popularThreads = $threadModel->getPopular(20);
+        
+        $data = [
+            'popular_threads' => $popularThreads
+        ];
+        
+        echo $this->view->render('popular_threads', $data);
+    }
+
+    /**
+     * Show trending topics
+     */
+    public function trendingTopics()
+    {
+        $threadModel = new Thread();
+        $trendingThreads = $threadModel->getTrending(20);
+        
+        $data = [
+            'trending_threads' => $trendingThreads
+        ];
+        
+        echo $this->view->render('trending_topics', $data);
+    }
+
+    /**
+     * Show user activity
+     */
+    public function userActivity($userId)
+    {
+        $userModel = new User();
+        $threadModel = new Thread();
+        $postModel = new Post();
+        
+        $user = $userModel->find($userId);
+        
+        if (!$user) {
+            $this->view->error(404, 'User not found');
+        }
+        
+        $userThreads = $threadModel->getByUser($userId, 1, 10);
+        $userPosts = $postModel->getByUser($userId, 1, 10);
+        
+        $data = [
+            'user' => $user,
+            'user_threads' => $userThreads,
+            'user_posts' => $userPosts
+        ];
+        
+        echo $this->view->render('user_activity', $data);
+    }
+
+    /**
+     * Show forum statistics
+     */
+    public function forumStats($forumId)
+    {
+        $forumModel = new Forum();
+        $threadModel = new Thread();
+        $postModel = new Post();
+        
+        $forum = $forumModel->find($forumId);
+        
+        if (!$forum) {
+            $this->view->error(404, 'Forum not found');
+        }
+        
+        $threadCount = $threadModel->getCountByForum($forumId);
+        $postCount = $postModel->getCountByForum($forumId);
+        $recentActivity = $forumModel->getRecentActivity($forumId, 10);
+        
+        $data = [
+            'forum' => $forum,
+            'thread_count' => $threadCount,
+            'post_count' => $postCount,
+            'recent_activity' => $recentActivity
+        ];
+        
+        echo $this->view->render('forum_stats', $data);
+    }
+
+    /**
+     * Show site map
+     */
+    public function sitemap()
+    {
+        $forumModel = new Forum();
+        $threadModel = new Thread();
+        
+        $forums = $forumModel->getAll();
+        $threads = $threadModel->getRecent(100);
+        
+        $data = [
+            'forums' => $forums,
+            'threads' => $threads
+        ];
+        
+        echo $this->view->render('sitemap', $data);
+    }
+
+    /**
+     * Show RSS feed
+     */
+    public function rss()
+    {
+        $threadModel = new Thread();
+        $recentThreads = $threadModel->getRecent(50);
+        
+        $data = [
+            'recent_threads' => $recentThreads
+        ];
+        
+        header('Content-Type: application/rss+xml; charset=utf-8');
+        echo $this->view->render('rss', $data);
+    }
+
+    /**
+     * Show atom feed
+     */
+    public function atom()
+    {
+        $threadModel = new Thread();
+        $recentThreads = $threadModel->getRecent(50);
+        
+        $data = [
+            'recent_threads' => $recentThreads
+        ];
+        
+        header('Content-Type: application/atom+xml; charset=utf-8');
+        echo $this->view->render('atom', $data);
+    }
+
+    /**
+     * Show JSON API
+     */
+    public function api()
+    {
+        $forumModel = new Forum();
+        $threadModel = new Thread();
+        $postModel = new Post();
+        $userModel = new User();
+        
+        $forums = $forumModel->getAll();
+        $recentThreads = $threadModel->getRecent(20);
+        $recentPosts = $postModel->getRecent(20);
+        $onlineUsers = $userModel->getOnlineUsers(20);
+        
+        $data = [
+            'forums' => $forums,
+            'recent_threads' => $recentThreads,
+            'recent_posts' => $recentPosts,
+            'online_users' => $onlineUsers,
+            'timestamp' => time()
+        ];
+        
+        $this->json($data);
+    }
+
+    /**
+     * Show health check
+     */
+    public function health()
+    {
+        $status = [
+            'status' => 'ok',
+            'timestamp' => time(),
+            'database' => $this->checkDatabase(),
+            'memory_usage' => memory_get_usage(true),
+            'memory_peak' => memory_get_peak_usage(true)
+        ];
+        
+        $this->json($status);
+    }
+
+    /**
+     * Check database connection
+     */
+    private function checkDatabase()
+    {
+        try {
+            $this->db->query("SELECT 1");
+            return 'connected';
+        } catch (Exception $e) {
+            return 'disconnected';
+        }
+    }
+
+    /**
+     * Show maintenance page
+     */
+    public function maintenance()
+    {
+        $this->view->error(503, 'Site is under maintenance. Please try again later.');
+    }
+
+    /**
+     * Show error page
+     */
+    public function error($code = 404)
+    {
+        $this->view->error($code);
+    }
+
+    /**
+     * Show test page
+     */
+    public function test()
+    {
+        if (!config('app.debug')) {
+            $this->view->error(404);
+        }
+        
+        $data = [
+            'php_version' => PHP_VERSION,
+            'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
+            'database_status' => $this->checkDatabase(),
+            'memory_usage' => memory_get_usage(true),
+            'memory_peak' => memory_get_peak_usage(true),
+            'loaded_extensions' => get_loaded_extensions(),
+            'config' => config('app')
+        ];
+        
+        echo $this->view->render('test', $data);
+    }
 }

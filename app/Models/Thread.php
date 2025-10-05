@@ -498,4 +498,245 @@ class Thread
         $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond, $femtosecond, $attosecond, $zeptosecond, $yoctosecond]);
         return $result['count'];
     }
+
+    /**
+     * Get popular threads
+     */
+    public function getPopular($limit = 20)
+    {
+        $sql = "SELECT t.*, u.username, u.display_name, f.name as forum_name,
+                        (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count,
+                        (SELECT COUNT(*) FROM post_reactions pr 
+                         JOIN posts p ON pr.post_id = p.id 
+                         WHERE p.thread_id = t.id) as reaction_count
+                FROM {$this->table} t
+                LEFT JOIN users u ON t.user_id = u.id
+                LEFT JOIN forums f ON t.forum_id = f.id
+                WHERE t.status = 'active'
+                ORDER BY (t.view_count + (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) * 2) DESC
+                LIMIT ?";
+        
+        return $this->db->fetchAll($sql, [$limit]);
+    }
+
+    /**
+     * Get trending threads
+     */
+    public function getTrending($limit = 20)
+    {
+        $sql = "SELECT t.*, u.username, u.display_name, f.name as forum_name,
+                        (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count,
+                        (SELECT COUNT(*) FROM post_reactions pr 
+                         JOIN posts p ON pr.post_id = p.id 
+                         WHERE p.thread_id = t.id) as reaction_count
+                FROM {$this->table} t
+                LEFT JOIN users u ON t.user_id = u.id
+                LEFT JOIN forums f ON t.forum_id = f.id
+                WHERE t.status = 'active' 
+                AND t.created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+                ORDER BY (t.view_count + (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) * 3) DESC
+                LIMIT ?";
+        
+        return $this->db->fetchAll($sql, [$limit]);
+    }
+
+    /**
+     * Get threads by date range
+     */
+    public function getByDateRange($startDate, $endDate, $page = 1, $perPage = 20)
+    {
+        $offset = ($page - 1) * $perPage;
+        
+        $sql = "SELECT t.*, u.username, u.display_name, f.name as forum_name,
+                        (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
+                FROM {$this->table} t
+                LEFT JOIN users u ON t.user_id = u.id
+                LEFT JOIN forums f ON t.forum_id = f.id
+                WHERE t.created_at BETWEEN ? AND ? AND t.status = 'active'
+                ORDER BY t.created_at DESC
+                LIMIT ? OFFSET ?";
+        
+        return $this->db->fetchAll($sql, [$startDate, $endDate, $perPage, $offset]);
+    }
+
+    /**
+     * Get threads by user and date range
+     */
+    public function getByUserAndDateRange($userId, $startDate, $endDate, $page = 1, $perPage = 20)
+    {
+        $offset = ($page - 1) * $perPage;
+        
+        $sql = "SELECT t.*, u.username, u.display_name, f.name as forum_name,
+                        (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
+                FROM {$this->table} t
+                LEFT JOIN users u ON t.user_id = u.id
+                LEFT JOIN forums f ON t.forum_id = f.id
+                WHERE t.user_id = ? AND t.created_at BETWEEN ? AND ? AND t.status = 'active'
+                ORDER BY t.created_at DESC
+                LIMIT ? OFFSET ?";
+        
+        return $this->db->fetchAll($sql, [$userId, $startDate, $endDate, $perPage, $offset]);
+    }
+
+    /**
+     * Get threads by forum and date range
+     */
+    public function getByForumAndDateRange($forumId, $startDate, $endDate, $page = 1, $perPage = 20)
+    {
+        $offset = ($page - 1) * $perPage;
+        
+        $sql = "SELECT t.*, u.username, u.display_name, f.name as forum_name,
+                        (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
+                FROM {$this->table} t
+                LEFT JOIN users u ON t.user_id = u.id
+                LEFT JOIN forums f ON t.forum_id = f.id
+                WHERE t.forum_id = ? AND t.created_at BETWEEN ? AND ? AND t.status = 'active'
+                ORDER BY t.created_at DESC
+                LIMIT ? OFFSET ?";
+        
+        return $this->db->fetchAll($sql, [$forumId, $startDate, $endDate, $perPage, $offset]);
+    }
+
+    /**
+     * Get threads by status and date range
+     */
+    public function getByStatusAndDateRange($status, $startDate, $endDate, $page = 1, $perPage = 20)
+    {
+        $offset = ($page - 1) * $perPage;
+        
+        $sql = "SELECT t.*, u.username, u.display_name, f.name as forum_name,
+                        (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
+                FROM {$this->table} t
+                LEFT JOIN users u ON t.user_id = u.id
+                LEFT JOIN forums f ON t.forum_id = f.id
+                WHERE t.status = ? AND t.created_at BETWEEN ? AND ?
+                ORDER BY t.created_at DESC
+                LIMIT ? OFFSET ?";
+        
+        return $this->db->fetchAll($sql, [$status, $startDate, $endDate, $perPage, $offset]);
+    }
+
+    /**
+     * Get threads by role and date range
+     */
+    public function getByRoleAndDateRange($role, $startDate, $endDate, $page = 1, $perPage = 20)
+    {
+        $offset = ($page - 1) * $perPage;
+        
+        $sql = "SELECT t.*, u.username, u.display_name, f.name as forum_name,
+                        (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
+                FROM {$this->table} t
+                LEFT JOIN users u ON t.user_id = u.id
+                LEFT JOIN forums f ON t.forum_id = f.id
+                WHERE u.role = ? AND t.created_at BETWEEN ? AND ? AND t.status = 'active'
+                ORDER BY t.created_at DESC
+                LIMIT ? OFFSET ?";
+        
+        return $this->db->fetchAll($sql, [$role, $startDate, $endDate, $perPage, $offset]);
+    }
+
+    /**
+     * Get threads by multiple criteria
+     */
+    public function getByCriteria($criteria = [], $page = 1, $perPage = 20)
+    {
+        $offset = ($page - 1) * $perPage;
+        $where = [];
+        $params = [];
+        
+        if (isset($criteria['forum_id'])) {
+            $where[] = "t.forum_id = ?";
+            $params[] = $criteria['forum_id'];
+        }
+        
+        if (isset($criteria['user_id'])) {
+            $where[] = "t.user_id = ?";
+            $params[] = $criteria['user_id'];
+        }
+        
+        if (isset($criteria['status'])) {
+            $where[] = "t.status = ?";
+            $params[] = $criteria['status'];
+        }
+        
+        if (isset($criteria['start_date'])) {
+            $where[] = "t.created_at >= ?";
+            $params[] = $criteria['start_date'];
+        }
+        
+        if (isset($criteria['end_date'])) {
+            $where[] = "t.created_at <= ?";
+            $params[] = $criteria['end_date'];
+        }
+        
+        if (isset($criteria['search'])) {
+            $where[] = "(t.title LIKE ? OR t.content LIKE ?)";
+            $searchTerm = "%{$criteria['search']}%";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+        
+        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        
+        $sql = "SELECT t.*, u.username, u.display_name, f.name as forum_name,
+                        (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
+                FROM {$this->table} t
+                LEFT JOIN users u ON t.user_id = u.id
+                LEFT JOIN forums f ON t.forum_id = f.id
+                {$whereClause}
+                ORDER BY t.created_at DESC
+                LIMIT ? OFFSET ?";
+        
+        $params[] = $perPage;
+        $params[] = $offset;
+        
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    /**
+     * Get thread count by criteria
+     */
+    public function getCountByCriteria($criteria = [])
+    {
+        $where = [];
+        $params = [];
+        
+        if (isset($criteria['forum_id'])) {
+            $where[] = "forum_id = ?";
+            $params[] = $criteria['forum_id'];
+        }
+        
+        if (isset($criteria['user_id'])) {
+            $where[] = "user_id = ?";
+            $params[] = $criteria['user_id'];
+        }
+        
+        if (isset($criteria['status'])) {
+            $where[] = "status = ?";
+            $params[] = $criteria['status'];
+        }
+        
+        if (isset($criteria['start_date'])) {
+            $where[] = "created_at >= ?";
+            $params[] = $criteria['start_date'];
+        }
+        
+        if (isset($criteria['end_date'])) {
+            $where[] = "created_at <= ?";
+            $params[] = $criteria['end_date'];
+        }
+        
+        if (isset($criteria['search'])) {
+            $where[] = "(title LIKE ? OR content LIKE ?)";
+            $searchTerm = "%{$criteria['search']}%";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+        
+        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} {$whereClause}";
+        $result = $this->db->fetch($sql, $params);
+        return $result['count'];
+    }
 }

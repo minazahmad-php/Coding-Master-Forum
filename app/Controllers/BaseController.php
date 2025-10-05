@@ -258,4 +258,327 @@ class BaseController
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
         ]));
     }
+
+    /**
+     * Check if user has permission
+     */
+    protected function hasPermission($permission)
+    {
+        $user = $this->getCurrentUser();
+        
+        if (!$user) {
+            return false;
+        }
+        
+        // Admin has all permissions
+        if ($user['role'] === 'admin') {
+            return true;
+        }
+        
+        // Check specific permissions based on role
+        $permissions = $this->getUserPermissions($user['role']);
+        
+        return in_array($permission, $permissions);
+    }
+
+    /**
+     * Get user permissions based on role
+     */
+    protected function getUserPermissions($role)
+    {
+        $permissions = [
+            'user' => [
+                'create_thread',
+                'create_post',
+                'edit_own_thread',
+                'edit_own_post',
+                'delete_own_thread',
+                'delete_own_post',
+                'react_to_post',
+                'subscribe_thread',
+                'send_message',
+                'view_profile'
+            ],
+            'moderator' => [
+                'create_thread',
+                'create_post',
+                'edit_own_thread',
+                'edit_own_post',
+                'delete_own_thread',
+                'delete_own_post',
+                'react_to_post',
+                'subscribe_thread',
+                'send_message',
+                'view_profile',
+                'moderate_posts',
+                'moderate_threads',
+                'ban_users',
+                'view_reports',
+                'manage_forums'
+            ],
+            'admin' => [
+                'all'
+            ]
+        ];
+        
+        return $permissions[$role] ?? [];
+    }
+
+    /**
+     * Require specific permission
+     */
+    protected function requirePermission($permission)
+    {
+        $this->requireAuth();
+        
+        if (!$this->hasPermission($permission)) {
+            $this->view->error(403, 'Access denied. Insufficient permissions.');
+        }
+    }
+
+    /**
+     * Validate file upload
+     */
+    protected function validateFileUpload($file, $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'], $maxSize = 5242880)
+    {
+        $errors = [];
+        
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $errors[] = 'File upload failed.';
+            return $errors;
+        }
+        
+        $fileSize = $file['size'];
+        if ($fileSize > $maxSize) {
+            $errors[] = 'File size too large. Maximum size: ' . ($maxSize / 1024 / 1024) . 'MB';
+        }
+        
+        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($fileExtension, $allowedTypes)) {
+            $errors[] = 'Invalid file type. Allowed types: ' . implode(', ', $allowedTypes);
+        }
+        
+        return $errors;
+    }
+
+    /**
+     * Upload file
+     */
+    protected function uploadFile($file, $directory = 'uploads')
+    {
+        $uploadDir = storage_path($directory);
+        
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $fileName = uniqid() . '_' . time() . '.' . pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filePath = $uploadDir . '/' . $fileName;
+        
+        if (move_uploaded_file($file['tmp_name'], $filePath)) {
+            return $directory . '/' . $fileName;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Generate slug from string
+     */
+    protected function generateSlug($string)
+    {
+        $slug = strtolower(trim($string));
+        $slug = preg_replace('/[^a-z0-9-]/', '-', $slug);
+        $slug = preg_replace('/-+/', '-', $slug);
+        $slug = trim($slug, '-');
+        
+        return $slug;
+    }
+
+    /**
+     * Check if slug exists
+     */
+    protected function slugExists($slug, $table, $excludeId = null)
+    {
+        $sql = "SELECT id FROM {$table} WHERE slug = ?";
+        $params = [$slug];
+        
+        if ($excludeId) {
+            $sql .= " AND id != ?";
+            $params[] = $excludeId;
+        }
+        
+        $result = $this->db->fetch($sql, $params);
+        return !empty($result);
+    }
+
+    /**
+     * Generate unique slug
+     */
+    protected function generateUniqueSlug($string, $table, $excludeId = null)
+    {
+        $baseSlug = $this->generateSlug($string);
+        $slug = $baseSlug;
+        $counter = 1;
+        
+        while ($this->slugExists($slug, $table, $excludeId)) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+        
+        return $slug;
+    }
+
+    /**
+     * Format date for display
+     */
+    protected function formatDate($date, $format = 'M j, Y')
+    {
+        return date($format, strtotime($date));
+    }
+
+    /**
+     * Format relative time
+     */
+    protected function timeAgo($date)
+    {
+        $time = time() - strtotime($date);
+        
+        if ($time < 60) {
+            return 'just now';
+        } elseif ($time < 3600) {
+            $minutes = floor($time / 60);
+            return $minutes . ' minute' . ($minutes > 1 ? 's' : '') . ' ago';
+        } elseif ($time < 86400) {
+            $hours = floor($time / 3600);
+            return $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ago';
+        } elseif ($time < 2592000) {
+            $days = floor($time / 86400);
+            return $days . ' day' . ($days > 1 ? 's' : '') . ' ago';
+        } else {
+            return $this->formatDate($date);
+        }
+    }
+
+    /**
+     * Paginate results
+     */
+    protected function paginate($total, $page, $perPage)
+    {
+        $totalPages = ceil($total / $perPage);
+        $offset = ($page - 1) * $perPage;
+        
+        return [
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'total_pages' => $totalPages,
+            'offset' => $offset,
+            'has_prev' => $page > 1,
+            'has_next' => $page < $totalPages,
+            'prev_page' => $page > 1 ? $page - 1 : null,
+            'next_page' => $page < $totalPages ? $page + 1 : null
+        ];
+    }
+
+    /**
+     * Get pagination links
+     */
+    protected function getPaginationLinks($pagination, $baseUrl)
+    {
+        $links = [];
+        
+        if ($pagination['has_prev']) {
+            $links['prev'] = $baseUrl . '?page=' . $pagination['prev_page'];
+        }
+        
+        if ($pagination['has_next']) {
+            $links['next'] = $baseUrl . '?page=' . $pagination['next_page'];
+        }
+        
+        return $links;
+    }
+
+    /**
+     * Send notification
+     */
+    protected function sendNotification($userId, $type, $message, $data = [])
+    {
+        $notificationData = [
+            'user_id' => $userId,
+            'type' => $type,
+            'message' => $message,
+            'data' => json_encode($data),
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+        
+        return $this->db->insert('notifications', $notificationData);
+    }
+
+    /**
+     * Send email
+     */
+    protected function sendEmail($to, $subject, $message, $isHtml = true)
+    {
+        $headers = [
+            'From: ' . config('mail.from.address'),
+            'Reply-To: ' . config('mail.from.address'),
+            'X-Mailer: PHP/' . phpversion()
+        ];
+        
+        if ($isHtml) {
+            $headers[] = 'MIME-Version: 1.0';
+            $headers[] = 'Content-type: text/html; charset=UTF-8';
+        }
+        
+        return mail($to, $subject, $message, implode("\r\n", $headers));
+    }
+
+    /**
+     * Get client IP address
+     */
+    protected function getClientIp()
+    {
+        $ipKeys = ['HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'];
+        
+        foreach ($ipKeys as $key) {
+            if (array_key_exists($key, $_SERVER) === true) {
+                foreach (explode(',', $_SERVER[$key]) as $ip) {
+                    $ip = trim($ip);
+                    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
+                        return $ip;
+                    }
+                }
+            }
+        }
+        
+        return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    }
+
+    /**
+     * Rate limiting
+     */
+    protected function rateLimit($key, $maxAttempts = 60, $decayMinutes = 1)
+    {
+        $cacheKey = 'rate_limit_' . $key . '_' . $this->getClientIp();
+        $attempts = $this->session->get($cacheKey, 0);
+        
+        if ($attempts >= $maxAttempts) {
+            $this->view->error(429, 'Too many requests. Please try again later.');
+        }
+        
+        $this->session->set($cacheKey, $attempts + 1);
+        $this->session->set($cacheKey . '_time', time() + ($decayMinutes * 60));
+    }
+
+    /**
+     * Clear rate limit
+     */
+    protected function clearRateLimit($key)
+    {
+        $cacheKey = 'rate_limit_' . $key . '_' . $this->getClientIp();
+        $this->session->forget($cacheKey);
+        $this->session->forget($cacheKey . '_time');
+    }
 }
