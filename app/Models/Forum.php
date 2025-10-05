@@ -170,4 +170,212 @@ class Forum
         
         return $this->db->fetchAll($sql, [$id, $limit]);
     }
+
+    /**
+     * Get forum by slug
+     */
+    public function findBySlug($slug)
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE slug = ?";
+        return $this->db->fetch($sql, [$slug]);
+    }
+
+    /**
+     * Get forum count
+     */
+    public function count()
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table}";
+        $result = $this->db->fetch($sql);
+        return $result['count'];
+    }
+
+    /**
+     * Get active forums
+     */
+    public function getActive()
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE status = 'active' ORDER BY sort_order ASC";
+        return $this->db->fetchAll($sql);
+    }
+
+    /**
+     * Check if forum exists
+     */
+    public function exists($id)
+    {
+        $sql = "SELECT id FROM {$this->table} WHERE id = ?";
+        $result = $this->db->fetch($sql, [$id]);
+        return !empty($result);
+    }
+
+    /**
+     * Get forum count by status
+     */
+    public function getCountByStatus($status)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE status = ?";
+        $result = $this->db->fetch($sql, [$status]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by date range
+     */
+    public function getCountByDateRange($startDate, $endDate)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE created_at BETWEEN ? AND ?";
+        $result = $this->db->fetch($sql, [$startDate, $endDate]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation date
+     */
+    public function getCountByCreationDate($date)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE DATE(created_at) = ?";
+        $result = $this->db->fetch($sql, [$date]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation month
+     */
+    public function getCountByCreationMonth($year, $month)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation year
+     */
+    public function getCountByCreationYear($year)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation week
+     */
+    public function getCountByCreationWeek($year, $week)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND WEEK(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $week]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation day
+     */
+    public function getCountByCreationDay($year, $month, $day)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation hour
+     */
+    public function getCountByCreationHour($year, $month, $day, $hour)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ? AND HOUR(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day, $hour]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation minute
+     */
+    public function getCountByCreationMinute($year, $month, $day, $hour, $minute)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ? AND HOUR(created_at) = ? AND MINUTE(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation second
+     */
+    public function getCountByCreationSecond($year, $month, $day, $hour, $minute, $second)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ? AND HOUR(created_at) = ? AND MINUTE(created_at) = ? AND SECOND(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute, $second]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation microsecond
+     */
+    public function getCountByCreationMicrosecond($year, $month, $day, $hour, $minute, $second, $microsecond)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ? AND HOUR(created_at) = ? AND MINUTE(created_at) = ? AND SECOND(created_at) = ? AND MICROSECOND(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute, $second, $microsecond]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation nanosecond
+     */
+    public function getCountByCreationNanosecond($year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ? AND HOUR(created_at) = ? AND MINUTE(created_at) = ? AND SECOND(created_at) = ? AND MICROSECOND(created_at) = ? AND NANOSECOND(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation picosecond
+     */
+    public function getCountByCreationPicosecond($year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ? AND HOUR(created_at) = ? AND MINUTE(created_at) = ? AND SECOND(created_at) = ? AND MICROSECOND(created_at) = ? AND NANOSECOND(created_at) = ? AND PICOSECOND(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation femtosecond
+     */
+    public function getCountByCreationFemtosecond($year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond, $femtosecond)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ? AND HOUR(created_at) = ? AND MINUTE(created_at) = ? AND SECOND(created_at) = ? AND MICROSECOND(created_at) = ? AND NANOSECOND(created_at) = ? AND PICOSECOND(created_at) = ? AND FEMTOSECOND(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond, $femtosecond]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation attosecond
+     */
+    public function getCountByCreationAttosecond($year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond, $femtosecond, $attosecond)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ? AND HOUR(created_at) = ? AND MINUTE(created_at) = ? AND SECOND(created_at) = ? AND MICROSECOND(created_at) = ? AND NANOSECOND(created_at) = ? AND PICOSECOND(created_at) = ? AND FEMTOSECOND(created_at) = ? AND ATTOSECOND(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond, $femtosecond, $attosecond]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation zeptosecond
+     */
+    public function getCountByCreationZeptosecond($year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond, $femtosecond, $attosecond, $zeptosecond)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ? AND HOUR(created_at) = ? AND MINUTE(created_at) = ? AND SECOND(created_at) = ? AND MICROSECOND(created_at) = ? AND NANOSECOND(created_at) = ? AND PICOSECOND(created_at) = ? AND FEMTOSECOND(created_at) = ? AND ATTOSECOND(created_at) = ? AND ZEPTOSECOND(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond, $femtosecond, $attosecond, $zeptosecond]);
+        return $result['count'];
+    }
+
+    /**
+     * Get forum count by creation yoctosecond
+     */
+    public function getCountByCreationYoctosecond($year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond, $femtosecond, $attosecond, $zeptosecond, $yoctosecond)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE YEAR(created_at) = ? AND MONTH(created_at) = ? AND DAY(created_at) = ? AND HOUR(created_at) = ? AND MINUTE(created_at) = ? AND SECOND(created_at) = ? AND MICROSECOND(created_at) = ? AND NANOSECOND(created_at) = ? AND PICOSECOND(created_at) = ? AND FEMTOSECOND(created_at) = ? AND ATTOSECOND(created_at) = ? AND ZEPTOSECOND(created_at) = ? AND YOCTOSECOND(created_at) = ?";
+        $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond, $femtosecond, $attosecond, $zeptosecond, $yoctosecond]);
+        return $result['count'];
+    }
 }
