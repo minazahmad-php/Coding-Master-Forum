@@ -22,14 +22,21 @@ class BaseController
     {
         global $app;
         
-        $this->view = $app->get('view');
-        $this->session = $app->get('session');
-        $this->db = $app->get('database');
-        $this->logger = $app->get('logger');
-        
-        // Share common data with views
-        $this->view->share('user', $this->getCurrentUser());
-        $this->view->share('csrf_token', $this->session->getCsrfToken());
+        try {
+            $this->view = $app->get('view');
+            $this->session = $app->get('session');
+            $this->db = $app->get('database');
+            $this->logger = $app->get('logger');
+            
+            // Share common data with views
+            if ($this->view) {
+                $this->view->share('user', $this->getCurrentUser());
+                $this->view->share('csrf_token', $this->session ? $this->session->getCsrfToken() : '');
+            }
+        } catch (\Exception $e) {
+            error_log('BaseController initialization error: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**
@@ -37,14 +44,23 @@ class BaseController
      */
     protected function getCurrentUser()
     {
-        $userId = $this->session->get('user_id');
-        
-        if ($userId) {
-            $userModel = new \App\Models\User();
-            return $userModel->find($userId);
+        try {
+            if (!$this->session) {
+                return null;
+            }
+            
+            $userId = $this->session->get('user_id');
+            
+            if ($userId) {
+                $userModel = new \App\Models\User();
+                return $userModel->find($userId);
+            }
+            
+            return null;
+        } catch (\Exception $e) {
+            error_log('getCurrentUser error: ' . $e->getMessage());
+            return null;
         }
-        
-        return null;
     }
 
     /**
@@ -52,7 +68,12 @@ class BaseController
      */
     protected function isAuthenticated()
     {
-        return $this->session->has('user_id');
+        try {
+            return $this->session && $this->session->has('user_id');
+        } catch (\Exception $e) {
+            error_log('isAuthenticated error: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -60,8 +81,13 @@ class BaseController
      */
     protected function hasRole($role)
     {
-        $user = $this->getCurrentUser();
-        return $user && $user['role'] === $role;
+        try {
+            $user = $this->getCurrentUser();
+            return $user && isset($user['role']) && $user['role'] === $role;
+        } catch (\Exception $e) {
+            error_log('hasRole error: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -69,7 +95,12 @@ class BaseController
      */
     protected function isAdmin()
     {
-        return $this->hasRole('admin');
+        try {
+            return $this->hasRole('admin');
+        } catch (\Exception $e) {
+            error_log('isAdmin error: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -77,7 +108,12 @@ class BaseController
      */
     protected function isModerator()
     {
-        return $this->hasRole('moderator') || $this->isAdmin();
+        try {
+            return $this->hasRole('moderator') || $this->isAdmin();
+        } catch (\Exception $e) {
+            error_log('isModerator error: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -85,8 +121,15 @@ class BaseController
      */
     protected function requireAuth()
     {
-        if (!$this->isAuthenticated()) {
-            $this->session->set('redirect_after_login', $_SERVER['REQUEST_URI']);
+        try {
+            if (!$this->isAuthenticated()) {
+                if ($this->session) {
+                    $this->session->set('redirect_after_login', $_SERVER['REQUEST_URI'] ?? '/');
+                }
+                redirect('/login');
+            }
+        } catch (\Exception $e) {
+            error_log('requireAuth error: ' . $e->getMessage());
             redirect('/login');
         }
     }
@@ -96,10 +139,23 @@ class BaseController
      */
     protected function requireAdmin()
     {
-        $this->requireAuth();
-        
-        if (!$this->isAdmin()) {
-            $this->view->error(403, 'Access denied. Admin privileges required.');
+        try {
+            $this->requireAuth();
+            
+            if (!$this->isAdmin()) {
+                if ($this->view) {
+                    $this->view->error(403, 'Access denied. Admin privileges required.');
+                } else {
+                    http_response_code(403);
+                    echo 'Access denied. Admin privileges required.';
+                    exit;
+                }
+            }
+        } catch (\Exception $e) {
+            error_log('requireAdmin error: ' . $e->getMessage());
+            http_response_code(403);
+            echo 'Access denied.';
+            exit;
         }
     }
 
@@ -108,10 +164,23 @@ class BaseController
      */
     protected function requireModerator()
     {
-        $this->requireAuth();
-        
-        if (!$this->isModerator()) {
-            $this->view->error(403, 'Access denied. Moderator privileges required.');
+        try {
+            $this->requireAuth();
+            
+            if (!$this->isModerator()) {
+                if ($this->view) {
+                    $this->view->error(403, 'Access denied. Moderator privileges required.');
+                } else {
+                    http_response_code(403);
+                    echo 'Access denied. Moderator privileges required.';
+                    exit;
+                }
+            }
+        } catch (\Exception $e) {
+            error_log('requireModerator error: ' . $e->getMessage());
+            http_response_code(403);
+            echo 'Access denied.';
+            exit;
         }
     }
 
@@ -120,10 +189,23 @@ class BaseController
      */
     protected function validateCsrf()
     {
-        $token = $_POST['_token'] ?? '';
-        
-        if (!$this->session->verifyCsrfToken($token)) {
-            $this->view->error(419, 'CSRF token mismatch.');
+        try {
+            $token = $_POST['_token'] ?? '';
+            
+            if (!$this->session || !$this->session->verifyCsrfToken($token)) {
+                if ($this->view) {
+                    $this->view->error(419, 'CSRF token mismatch.');
+                } else {
+                    http_response_code(419);
+                    echo 'CSRF token mismatch.';
+                    exit;
+                }
+            }
+        } catch (\Exception $e) {
+            error_log('validateCsrf error: ' . $e->getMessage());
+            http_response_code(419);
+            echo 'CSRF token mismatch.';
+            exit;
         }
     }
 
@@ -132,15 +214,24 @@ class BaseController
      */
     protected function validateRequired($fields, $data)
     {
-        $errors = [];
-        
-        foreach ($fields as $field) {
-            if (empty($data[$field])) {
-                $errors[] = ucfirst($field) . ' is required.';
+        try {
+            $errors = [];
+            
+            if (!is_array($fields) || !is_array($data)) {
+                return ['Invalid input data'];
             }
+            
+            foreach ($fields as $field) {
+                if (empty($data[$field])) {
+                    $errors[] = ucfirst($field) . ' is required.';
+                }
+            }
+            
+            return $errors;
+        } catch (\Exception $e) {
+            error_log('validateRequired error: ' . $e->getMessage());
+            return ['Validation error occurred'];
         }
-        
-        return $errors;
     }
 
     /**
@@ -148,7 +239,15 @@ class BaseController
      */
     protected function validateEmail($email)
     {
-        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+        try {
+            if (!is_string($email)) {
+                return false;
+            }
+            return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+        } catch (\Exception $e) {
+            error_log('validateEmail error: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -156,25 +255,34 @@ class BaseController
      */
     protected function validatePassword($password)
     {
-        $errors = [];
-        
-        if (strlen($password) < 8) {
-            $errors[] = 'Password must be at least 8 characters long.';
+        try {
+            $errors = [];
+            
+            if (!is_string($password)) {
+                return ['Password must be a string'];
+            }
+            
+            if (strlen($password) < 8) {
+                $errors[] = 'Password must be at least 8 characters long.';
+            }
+            
+            if (!preg_match('/[A-Z]/', $password)) {
+                $errors[] = 'Password must contain at least one uppercase letter.';
+            }
+            
+            if (!preg_match('/[a-z]/', $password)) {
+                $errors[] = 'Password must contain at least one lowercase letter.';
+            }
+            
+            if (!preg_match('/[0-9]/', $password)) {
+                $errors[] = 'Password must contain at least one number.';
+            }
+            
+            return $errors;
+        } catch (\Exception $e) {
+            error_log('validatePassword error: ' . $e->getMessage());
+            return ['Password validation error occurred'];
         }
-        
-        if (!preg_match('/[A-Z]/', $password)) {
-            $errors[] = 'Password must contain at least one uppercase letter.';
-        }
-        
-        if (!preg_match('/[a-z]/', $password)) {
-            $errors[] = 'Password must contain at least one lowercase letter.';
-        }
-        
-        if (!preg_match('/[0-9]/', $password)) {
-            $errors[] = 'Password must contain at least one number.';
-        }
-        
-        return $errors;
     }
 
     /**
@@ -182,11 +290,20 @@ class BaseController
      */
     protected function sanitize($data)
     {
-        if (is_array($data)) {
-            return array_map([$this, 'sanitize'], $data);
+        try {
+            if (is_array($data)) {
+                return array_map([$this, 'sanitize'], $data);
+            }
+            
+            if (!is_string($data)) {
+                return $data;
+            }
+            
+            return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
+        } catch (\Exception $e) {
+            error_log('sanitize error: ' . $e->getMessage());
+            return is_string($data) ? htmlspecialchars($data, ENT_QUOTES, 'UTF-8') : $data;
         }
-        
-        return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
     }
 
     /**
@@ -194,7 +311,13 @@ class BaseController
      */
     protected function setFlash($type, $message)
     {
-        $this->session->flash($type, $message);
+        try {
+            if ($this->session) {
+                $this->session->flash($type, $message);
+            }
+        } catch (\Exception $e) {
+            error_log('setFlash error: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -202,7 +325,15 @@ class BaseController
      */
     protected function getFlash($type)
     {
-        return $this->session->flash($type);
+        try {
+            if ($this->session) {
+                return $this->session->flash($type);
+            }
+            return null;
+        } catch (\Exception $e) {
+            error_log('getFlash error: ' . $e->getMessage());
+            return null;
+        }
     }
 
     /**
@@ -210,8 +341,13 @@ class BaseController
      */
     protected function redirectWithMessage($url, $type, $message)
     {
-        $this->setFlash($type, $message);
-        redirect($url);
+        try {
+            $this->setFlash($type, $message);
+            redirect($url);
+        } catch (\Exception $e) {
+            error_log('redirectWithMessage error: ' . $e->getMessage());
+            redirect($url);
+        }
     }
 
     /**
@@ -219,7 +355,22 @@ class BaseController
      */
     protected function json($data, $status = 200)
     {
-        $this->view->json($data, $status);
+        try {
+            if ($this->view) {
+                $this->view->json($data, $status);
+            } else {
+                http_response_code($status);
+                header('Content-Type: application/json');
+                echo json_encode($data);
+                exit;
+            }
+        } catch (\Exception $e) {
+            error_log('json error: ' . $e->getMessage());
+            http_response_code($status);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Internal server error']);
+            exit;
+        }
     }
 
     /**
@@ -227,7 +378,14 @@ class BaseController
      */
     protected function error($message, $status = 400)
     {
-        $this->json(['error' => $message], $status);
+        try {
+            $this->json(['error' => $message], $status);
+        } catch (\Exception $e) {
+            error_log('error method error: ' . $e->getMessage());
+            http_response_code($status);
+            echo json_encode(['error' => $message]);
+            exit;
+        }
     }
 
     /**
@@ -235,13 +393,20 @@ class BaseController
      */
     protected function success($message, $data = [])
     {
-        $response = ['success' => true, 'message' => $message];
-        
-        if (!empty($data)) {
-            $response['data'] = $data;
+        try {
+            $response = ['success' => true, 'message' => $message];
+            
+            if (!empty($data)) {
+                $response['data'] = $data;
+            }
+            
+            $this->json($response);
+        } catch (\Exception $e) {
+            error_log('success method error: ' . $e->getMessage());
+            http_response_code(200);
+            echo json_encode(['success' => true, 'message' => $message, 'data' => $data]);
+            exit;
         }
-        
-        $this->json($response);
     }
 
     /**
@@ -249,14 +414,20 @@ class BaseController
      */
     protected function logActivity($action, $details = [])
     {
-        $user = $this->getCurrentUser();
-        $userId = $user ? $user['id'] : null;
-        
-        $this->logger->info("User activity: {$action}", array_merge($details, [
-            'user_id' => $userId,
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
-        ]));
+        try {
+            $user = $this->getCurrentUser();
+            $userId = $user ? $user['id'] : null;
+            
+            if ($this->logger) {
+                $this->logger->info("User activity: {$action}", array_merge($details, [
+                    'user_id' => $userId,
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
+                ]));
+            }
+        } catch (\Exception $e) {
+            error_log('logActivity error: ' . $e->getMessage());
+        }
     }
 
     /**

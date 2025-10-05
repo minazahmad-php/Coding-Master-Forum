@@ -17,6 +17,10 @@ class User
     {
         global $app;
         $this->db = $app->get('database');
+        
+        if (!$this->db) {
+            throw new \Exception('Database connection not available');
+        }
     }
 
     /**
@@ -24,11 +28,35 @@ class User
      */
     public function create($data)
     {
-        $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
-        $data['created_at'] = date('Y-m-d H:i:s');
-        $data['updated_at'] = date('Y-m-d H:i:s');
-        
-        return $this->db->insert($this->table, $data);
+        try {
+            // Validate required fields
+            if (empty($data['username']) || empty($data['email']) || empty($data['password'])) {
+                throw new \Exception('Required fields missing');
+            }
+            
+            // Validate email format
+            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new \Exception('Invalid email format');
+            }
+            
+            // Check if username or email already exists
+            if ($this->findByUsername($data['username'])) {
+                throw new \Exception('Username already exists');
+            }
+            
+            if ($this->findByEmail($data['email'])) {
+                throw new \Exception('Email already exists');
+            }
+            
+            $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+            $data['created_at'] = date('Y-m-d H:i:s');
+            $data['updated_at'] = date('Y-m-d H:i:s');
+            
+            return $this->db->insert($this->table, $data);
+        } catch (\Exception $e) {
+            error_log('User creation error: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**

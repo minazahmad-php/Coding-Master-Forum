@@ -40,14 +40,19 @@ class Database
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES {$charset}"
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES {$charset}",
+                PDO::ATTR_PERSISTENT => false,
+                PDO::ATTR_TIMEOUT => 30,
+                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false
             ];
 
             $this->pdo = new PDO($dsn, $username, $password, $options);
             
         } catch (PDOException $e) {
             $this->logger->error('Database connection failed: ' . $e->getMessage());
-            throw new \Exception('Database connection failed');
+            // Fallback error handling if logger fails
+            error_log('Database connection failed: ' . $e->getMessage());
+            throw new \Exception('Database connection failed: ' . $e->getMessage());
         }
     }
 
@@ -73,6 +78,8 @@ class Database
                 'sql' => $sql,
                 'params' => $params
             ]);
+            // Fallback error handling
+            error_log('Query failed: ' . $e->getMessage() . ' SQL: ' . $sql);
             throw $e;
         }
     }

@@ -28,6 +28,7 @@ class View
         $file = $this->viewPath . '/' . $view . '.php';
         
         if (!file_exists($file)) {
+            error_log("View file not found: {$view} at {$file}");
             throw new \Exception("View file not found: {$view}");
         }
         
@@ -87,6 +88,7 @@ class View
         $file = $this->viewPath . '/' . $view . '.php';
         
         if (!file_exists($file)) {
+            error_log("Partial view file not found: {$view} at {$file}");
             return '';
         }
         
@@ -119,7 +121,7 @@ class View
         } else {
             echo "<h1>Error {$code}</h1>";
             if ($message) {
-                echo "<p>{$message}</p>";
+                echo "<p>" . htmlspecialchars($message) . "</p>";
             }
         }
         

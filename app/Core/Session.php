@@ -25,6 +25,8 @@ class Session
             ini_set('session.cookie_httponly', 1);
             ini_set('session.use_only_cookies', 1);
             ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
+            ini_set('session.use_strict_mode', 1);
+            ini_set('session.cookie_samesite', 'Strict');
             
             // Set session name
             session_name('FORUM_SESSION');
@@ -32,6 +34,14 @@ class Session
             // Start session
             session_start();
             $this->started = true;
+            
+            // Regenerate session ID periodically
+            if (!isset($_SESSION['last_regeneration'])) {
+                $_SESSION['last_regeneration'] = time();
+            } elseif (time() - $_SESSION['last_regeneration'] > 300) { // 5 minutes
+                session_regenerate_id(true);
+                $_SESSION['last_regeneration'] = time();
+            }
         }
     }
 

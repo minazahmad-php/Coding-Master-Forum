@@ -42,28 +42,35 @@ class Application
      */
     private function initializeServices()
     {
-        // Initialize logger first
-        $this->logger = new Logger($this->config);
-        
-        // Initialize database
-        $this->database = new Database($this->config);
-        
-        // Initialize session
-        $this->session = new Session();
-        
-        // Initialize view engine
-        $this->view = new View($this->config);
-        
-        // Initialize router
-        $this->router = new Router($this->config);
-        
-        // Register services in container
-        $this->container['config'] = $this->config;
-        $this->container['database'] = $this->database;
-        $this->container['session'] = $this->session;
-        $this->container['view'] = $this->view;
-        $this->container['logger'] = $this->logger;
-        $this->container['router'] = $this->router;
+        try {
+            // Initialize logger first
+            $this->logger = new Logger($this->config);
+            
+            // Initialize database
+            $this->database = new Database($this->config);
+            
+            // Initialize session
+            $this->session = new Session();
+            
+            // Initialize view engine
+            $this->view = new View($this->config);
+            
+            // Initialize router
+            $this->router = new Router($this->config);
+            
+            // Register services in container
+            $this->container['config'] = $this->config;
+            $this->container['database'] = $this->database;
+            $this->container['session'] = $this->session;
+            $this->container['view'] = $this->view;
+            $this->container['logger'] = $this->logger;
+            $this->container['router'] = $this->router;
+            
+        } catch (\Exception $e) {
+            // Log initialization error
+            error_log('Application initialization error: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**

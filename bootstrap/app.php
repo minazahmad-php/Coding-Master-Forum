@@ -5,9 +5,15 @@
  * Initialize the application and handle the request
  */
 
-// Set error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Set error reporting based on environment
+$isDebug = ($_ENV['APP_DEBUG'] ?? 'false') === 'true';
+if ($isDebug) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+} else {
+    error_reporting(0);
+    ini_set('display_errors', 0);
+}
 
 // Set timezone
 date_default_timezone_set('Asia/Dhaka');
@@ -49,8 +55,27 @@ if (file_exists(APP_ROOT . '/vendor/autoload.php')) {
 // Load helper functions
 require_once APP_PATH . '/Core/Helpers.php';
 
+// Initialize error handler
+try {
+    $logger = null;
+    if (class_exists('App\Core\Logger')) {
+        $config = new App\Core\Config();
+        $logger = new App\Core\Logger($config);
+    }
+    $errorHandler = new App\Core\ErrorHandler($logger, $isDebug);
+} catch (\Exception $e) {
+    error_log('Failed to initialize error handler: ' . $e->getMessage());
+}
+
 // Initialize application
-$app = new App\Core\Application();
+try {
+    $app = new App\Core\Application();
+} catch (\Exception $e) {
+    error_log('Failed to initialize application: ' . $e->getMessage());
+    http_response_code(500);
+    echo 'Application initialization failed. Please check the logs.';
+    exit;
+}
 
 // Make app globally available
 $GLOBALS['app'] = $app;

@@ -34,6 +34,14 @@ if (!function_exists('redirect')) {
      */
     function redirect($url, $status = 302)
     {
+        // Validate URL to prevent open redirects
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            // If not a full URL, ensure it starts with /
+            if (strpos($url, '/') !== 0) {
+                $url = '/' . ltrim($url, '/');
+            }
+        }
+        
         http_response_code($status);
         header("Location: {$url}");
         exit;

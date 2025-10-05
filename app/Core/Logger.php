@@ -32,7 +32,10 @@ class Logger
         // Create logs directory if it doesn't exist
         $logPath = STORAGE_PATH . '/logs';
         if (!is_dir($logPath)) {
-            mkdir($logPath, 0755, true);
+            if (!mkdir($logPath, 0755, true)) {
+                error_log('Failed to create logs directory: ' . $logPath);
+                throw new \Exception('Failed to create logs directory');
+            }
         }
         
         // Add file handler
@@ -59,7 +62,11 @@ class Logger
      */
     public function debug($message, $context = [])
     {
-        $this->logger->debug($message, $context);
+        try {
+            $this->logger->debug($message, $context);
+        } catch (\Exception $e) {
+            error_log('Logger debug failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -67,7 +74,11 @@ class Logger
      */
     public function info($message, $context = [])
     {
-        $this->logger->info($message, $context);
+        try {
+            $this->logger->info($message, $context);
+        } catch (\Exception $e) {
+            error_log('Logger info failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -75,7 +86,11 @@ class Logger
      */
     public function warning($message, $context = [])
     {
-        $this->logger->warning($message, $context);
+        try {
+            $this->logger->warning($message, $context);
+        } catch (\Exception $e) {
+            error_log('Logger warning failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -83,7 +98,11 @@ class Logger
      */
     public function error($message, $context = [])
     {
-        $this->logger->error($message, $context);
+        try {
+            $this->logger->error($message, $context);
+        } catch (\Exception $e) {
+            error_log('Logger error failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -91,7 +110,11 @@ class Logger
      */
     public function critical($message, $context = [])
     {
-        $this->logger->critical($message, $context);
+        try {
+            $this->logger->critical($message, $context);
+        } catch (\Exception $e) {
+            error_log('Logger critical failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -99,7 +122,11 @@ class Logger
      */
     public function log($level, $message, $context = [])
     {
-        $this->logger->log($level, $message, $context);
+        try {
+            $this->logger->log($level, $message, $context);
+        } catch (\Exception $e) {
+            error_log('Logger log failed: ' . $e->getMessage());
+        }
     }
 
     /**
