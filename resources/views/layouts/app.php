@@ -6,6 +6,7 @@
     <title><?= isset($title) ? e($title) . ' - ' : '' ?><?= config('app.name', 'My Forum') ?></title>
     <meta name="description" content="<?= isset($description) ? e($description) : 'A modern forum application' ?>">
     <meta name="keywords" content="<?= isset($keywords) ? e($keywords) : 'forum, discussion, community' ?>">
+    <meta name="csrf-token" content="<?= csrf_token() ?>">
     
     <!-- CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
