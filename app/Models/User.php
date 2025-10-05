@@ -450,4 +450,126 @@ class User
         $result = $this->db->fetch($sql, [$year, $month, $day, $hour, $minute, $second, $microsecond, $nanosecond, $picosecond, $femtosecond, $attosecond, $zeptosecond, $yoctosecond]);
         return $result['count'];
     }
+
+    /**
+     * Get users by date range
+     */
+    public function getByDateRange($startDate, $endDate, $page = 1, $perPage = 20)
+    {
+        $offset = ($page - 1) * $perPage;
+        
+        $sql = "SELECT * FROM {$this->table} WHERE created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        return $this->db->fetchAll($sql, [$startDate, $endDate, $perPage, $offset]);
+    }
+
+    /**
+     * Get users by role and date range
+     */
+    public function getByRoleAndDateRange($role, $startDate, $endDate, $page = 1, $perPage = 20)
+    {
+        $offset = ($page - 1) * $perPage;
+        
+        $sql = "SELECT * FROM {$this->table} WHERE role = ? AND created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        return $this->db->fetchAll($sql, [$role, $startDate, $endDate, $perPage, $offset]);
+    }
+
+    /**
+     * Get users by status and date range
+     */
+    public function getByStatusAndDateRange($status, $startDate, $endDate, $page = 1, $perPage = 20)
+    {
+        $offset = ($page - 1) * $perPage;
+        
+        $sql = "SELECT * FROM {$this->table} WHERE status = ? AND created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        return $this->db->fetchAll($sql, [$status, $startDate, $endDate, $perPage, $offset]);
+    }
+
+    /**
+     * Get users by multiple criteria
+     */
+    public function getByCriteria($criteria = [], $page = 1, $perPage = 20)
+    {
+        $offset = ($page - 1) * $perPage;
+        $where = [];
+        $params = [];
+        
+        if (isset($criteria['role'])) {
+            $where[] = "role = ?";
+            $params[] = $criteria['role'];
+        }
+        
+        if (isset($criteria['status'])) {
+            $where[] = "status = ?";
+            $params[] = $criteria['status'];
+        }
+        
+        if (isset($criteria['start_date'])) {
+            $where[] = "created_at >= ?";
+            $params[] = $criteria['start_date'];
+        }
+        
+        if (isset($criteria['end_date'])) {
+            $where[] = "created_at <= ?";
+            $params[] = $criteria['end_date'];
+        }
+        
+        if (isset($criteria['search'])) {
+            $where[] = "(username LIKE ? OR email LIKE ? OR display_name LIKE ?)";
+            $searchTerm = "%{$criteria['search']}%";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+        
+        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        
+        $sql = "SELECT * FROM {$this->table} {$whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        $params[] = $perPage;
+        $params[] = $offset;
+        
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    /**
+     * Get user count by criteria
+     */
+    public function getCountByCriteria($criteria = [])
+    {
+        $where = [];
+        $params = [];
+        
+        if (isset($criteria['role'])) {
+            $where[] = "role = ?";
+            $params[] = $criteria['role'];
+        }
+        
+        if (isset($criteria['status'])) {
+            $where[] = "status = ?";
+            $params[] = $criteria['status'];
+        }
+        
+        if (isset($criteria['start_date'])) {
+            $where[] = "created_at >= ?";
+            $params[] = $criteria['start_date'];
+        }
+        
+        if (isset($criteria['end_date'])) {
+            $where[] = "created_at <= ?";
+            $params[] = $criteria['end_date'];
+        }
+        
+        if (isset($criteria['search'])) {
+            $where[] = "(username LIKE ? OR email LIKE ? OR display_name LIKE ?)";
+            $searchTerm = "%{$criteria['search']}%";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+        
+        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} {$whereClause}";
+        $result = $this->db->fetch($sql, $params);
+        return $result['count'];
+    }
 }
