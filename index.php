@@ -1,33 +1,37 @@
 <?php
-declare(strict_types=1);
+/**
+ * Forum Application Entry Point
+ * Main entry point for the forum application
+ */
 
-// Main entry point for the application
-require_once __DIR__ . '/config.php';
+// Start output buffering
+ob_start();
 
-// Include core files
-require_once CORE_PATH . '/Database.php';
-require_once CORE_PATH . '/Auth.php';
-require_once CORE_PATH . '/Router.php';
-require_once CORE_PATH . '/Functions.php';
-require_once CORE_PATH . '/Middleware.php';
+// Set error reporting
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// Include models
-require_once MODELS_PATH . '/User.php';
-require_once MODELS_PATH . '/Forum.php';
-require_once MODELS_PATH . '/Thread.php';
-require_once MODELS_PATH . '/Post.php';
-require_once MODELS_PATH . '/Message.php';
-require_once MODELS_PATH . '/Notification.php';
+// Define application constants
+define('APP_ROOT', __DIR__);
+define('APP_PATH', APP_ROOT . '/app');
+define('CONFIG_PATH', APP_PATH . '/Config');
+define('STORAGE_PATH', APP_ROOT . '/storage');
+define('PUBLIC_PATH', APP_ROOT . '/public');
 
-// Include controllers
-require_once CONTROLLERS_PATH . '/HomeController.php';
-require_once CONTROLLERS_PATH . '/AuthController.php';
-require_once CONTROLLERS_PATH . '/ForumController.php';
-require_once CONTROLLERS_PATH . '/UserController.php';
-require_once CONTROLLERS_PATH . '/MessageController.php';
-require_once CONTROLLERS_PATH . '/AdminController.php';
-require_once CONTROLLERS_PATH . '/ApiController.php';
+// Check if installation is required
+if (!file_exists(CONFIG_PATH . '/database.php')) {
+    header('Location: install.php');
+    exit;
+}
 
-// Include routes
-require_once ROUTES_PATH . '/web.php';
-?>
+// Load Composer autoloader
+require_once APP_ROOT . '/vendor/autoload.php';
+
+// Load application bootstrap
+require_once APP_ROOT . '/bootstrap/app.php';
+
+// Initialize application
+$app = new App\Core\Application();
+
+// Handle the request
+$app->run();

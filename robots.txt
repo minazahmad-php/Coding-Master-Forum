@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+
+# Disallow admin areas
+Disallow: /admin/
+Disallow: /storage/
+Disallow: /app/
+Disallow: /database/
+Disallow: /vendor/
+Disallow: /bootstrap/
+Disallow: /install.php
+
+# Allow important pages
+Allow: /public/
+Allow: /public/build/
+Allow: /public/images/
+
+# Sitemap location
+Sitemap: https://coding-master.infy.uk/sitemap.xml
