@@ -136,7 +136,16 @@ if ($_POST) {
                 sort($migrations);
                 
                 foreach ($migrations as $migration) {
-                    $sql = file_get_contents($migration);
+                    $sql = include $migration;
+                    $pdo->exec($sql);
+                }
+                
+                // Run seeders
+                $seeders = glob(APP_ROOT . '/database/seeders/*.php');
+                sort($seeders);
+                
+                foreach ($seeders as $seeder) {
+                    $sql = include $seeder;
                     $pdo->exec($sql);
                 }
                 
