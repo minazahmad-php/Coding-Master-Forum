@@ -270,3 +270,23 @@ if (!function_exists('dump')) {
         echo '</pre>';
     }
 }
+
+if (!function_exists('storage_path')) {
+    /**
+     * Get storage path
+     */
+    function storage_path($path = '')
+    {
+        return STORAGE_PATH . ($path ? '/' . ltrim($path, '/') : '');
+    }
+}
+
+if (!function_exists('resource_path')) {
+    /**
+     * Get resource path
+     */
+    function resource_path($path = '')
+    {
+        return APP_ROOT . '/resources' . ($path ? '/' . ltrim($path, '/') : '');
+    }
+}

@@ -1,0 +1,7 @@
+Contact: mailto:security@coding-master.infy.uk
+Expires: 2025-12-31T23:59:59.000Z
+Encryption: https://coding-master.infy.uk/pgp-key.txt
+Acknowledgments: https://coding-master.infy.uk/security/acknowledgments
+Preferred-Languages: en, bn
+Canonical: https://coding-master.infy.uk/.well-known/security.txt
+Policy: https://coding-master.infy.uk/security-policy
