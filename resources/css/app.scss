@@ -1,0 +1,252 @@
+// Main application styles
+@import 'bootstrap/scss/bootstrap';
+
+// Custom variables
+$primary: #007bff;
+$secondary: #6c757d;
+$success: #28a745;
+$info: #17a2b8;
+$warning: #ffc107;
+$danger: #dc3545;
+$light: #f8f9fa;
+$dark: #343a40;
+
+// Custom styles
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+.forum-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+    
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border-left-color: $primary;
+    }
+}
+
+.post-content {
+    line-height: 1.8;
+    
+    img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+    }
+    
+    blockquote {
+        border-left: 4px solid $primary;
+        padding-left: 1rem;
+        margin: 1rem 0;
+        background: $light;
+        padding: 1rem;
+        border-radius: 0 4px 4px 0;
+    }
+    
+    code {
+        background: $light;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        font-size: 0.9em;
+    }
+    
+    pre {
+        background: $dark;
+        color: white;
+        padding: 1rem;
+        border-radius: 4px;
+        overflow-x: auto;
+    }
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid $light;
+}
+
+.thread-meta {
+    font-size: 0.9em;
+    color: $secondary;
+}
+
+.reaction-btn {
+    border: none;
+    background: none;
+    color: $secondary;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+        color: $primary;
+        background: rgba($primary, 0.1);
+    }
+    
+    &.active {
+        color: $primary;
+        background: rgba($primary, 0.1);
+    }
+}
+
+.badge-custom {
+    font-size: 0.75em;
+    padding: 0.35em 0.65em;
+}
+
+.online-indicator {
+    position: relative;
+    
+    &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 12px;
+        height: 12px;
+        background: $success;
+        border: 2px solid white;
+        border-radius: 50%;
+    }
+}
+
+.thread-stats {
+    font-size: 0.85em;
+    color: $secondary;
+}
+
+.pagination {
+    .page-link {
+        color: $primary;
+        border-color: $light;
+        
+        &:hover {
+            color: darken($primary, 10%);
+            background-color: $light;
+            border-color: $light;
+        }
+    }
+    
+    .page-item.active .page-link {
+        background-color: $primary;
+        border-color: $primary;
+    }
+}
+
+.card-header {
+    background: linear-gradient(135deg, $primary, lighten($primary, 10%));
+    color: white;
+    border: none;
+    
+    h5 {
+        margin: 0;
+        font-weight: 600;
+    }
+}
+
+.jumbotron {
+    background: linear-gradient(135deg, $primary, lighten($primary, 15%));
+    border-radius: 8px;
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+    .forum-card {
+        .row {
+            flex-direction: column;
+        }
+        
+        .col-md-4 {
+            text-align: left !important;
+            margin-top: 0.5rem;
+        }
+    }
+    
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+// Dark theme support
+@media (prefers-color-scheme: dark) {
+    .card {
+        background-color: $dark;
+        border-color: lighten($dark, 10%);
+    }
+    
+    .card-header {
+        background: linear-gradient(135deg, darken($primary, 20%), $primary);
+    }
+    
+    .text-muted {
+        color: lighten($secondary, 20%) !important;
+    }
+}
+
+// Animation classes
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+
+// Utility classes
+.text-truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.text-truncate-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.border-dashed {
+    border-style: dashed !important;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+// Loading spinner
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba($primary, 0.3);
+    border-radius: 50%;
+    border-top-color: $primary;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
