@@ -43,7 +43,7 @@ class Application
     private function initializeServices()
     {
         try {
-            // Initialize logger first
+            // Initialize logger first with optimized settings
             $this->logger = new Logger($this->config);
             
             // Initialize database
