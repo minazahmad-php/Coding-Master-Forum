@@ -43,7 +43,11 @@ class Database
                 PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES {$charset}",
                 PDO::ATTR_PERSISTENT => false,
                 PDO::ATTR_TIMEOUT => 30,
-                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false
+                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+                PDO::ATTR_STRINGIFY_FETCHES => false,
+                PDO::ATTR_CASE => PDO::CASE_NATURAL,
+                PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
+                PDO::MYSQL_ATTR_LOCAL_INFILE => true
             ];
 
             $this->pdo = new PDO($dsn, $username, $password, $options);
