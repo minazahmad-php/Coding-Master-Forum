@@ -55,25 +55,34 @@ function performInstallation() {
         $adminConfig = $_SESSION['admin_config'];
         $envConfig = $_SESSION['env_config'];
         
-        // Step 1: Create .env file
+        // Step 1: Install Dependencies
+        installDependencies();
+        
+        // Step 2: Create .env file
         createEnvFile($dbConfig, $envConfig);
         
-        // Step 2: Setup database
+        // Step 3: Setup database
         setupDatabase($dbConfig);
         
-        // Step 3: Create admin user
+        // Step 4: Create admin user
         createAdminUser($adminConfig);
         
-        // Step 4: Create necessary directories
+        // Step 5: Create necessary directories
         createDirectories();
         
-        // Step 5: Set file permissions
+        // Step 6: Set file permissions
         setFilePermissions();
         
-        // Step 6: Create .installed file
+        // Step 7: Build assets
+        buildAssets();
+        
+        // Step 8: Setup web server
+        setupWebServer();
+        
+        // Step 9: Create .installed file
         file_put_contents('.installed', date('Y-m-d H:i:s'));
         
-        // Step 7: Clear session
+        // Step 10: Clear session
         session_destroy();
         
         header('Location: ?step=complete');
@@ -81,6 +90,191 @@ function performInstallation() {
         
     } catch (Exception $e) {
         $error = "Installation failed: " . $e->getMessage();
+    }
+}
+
+function installDependencies() {
+    echo "🔧 Installing Dependencies...\n";
+    
+    // Install Composer dependencies
+    if (!file_exists('vendor/autoload.php')) {
+        installComposerDependencies();
+    }
+    
+    // Install Node.js dependencies
+    if (!file_exists('node_modules')) {
+        installNodeDependencies();
+    }
+    
+    // Install system dependencies if needed
+    installSystemDependencies();
+}
+
+function installComposerDependencies() {
+    echo "📦 Installing Composer dependencies...\n";
+    
+    $composerPath = findExecutable('composer');
+    if (!$composerPath) {
+        // Download and install Composer
+        installComposer();
+        $composerPath = './composer.phar';
+    }
+    
+    // Run composer install
+    $command = "php $composerPath install --no-dev --optimize-autoloader --no-interaction 2>&1";
+    $output = [];
+    $returnCode = 0;
+    exec($command, $output, $returnCode);
+    
+    if ($returnCode !== 0) {
+        throw new Exception("Composer installation failed: " . implode("\n", $output));
+    }
+    
+    echo "✅ Composer dependencies installed successfully!\n";
+}
+
+function installComposer() {
+    echo "📥 Downloading Composer...\n";
+    
+    $composerInstaller = file_get_contents('https://getcomposer.org/installer');
+    if ($composerInstaller === false) {
+        throw new Exception("Failed to download Composer installer");
+    }
+    
+    file_put_contents('composer-installer.php', $composerInstaller);
+    
+    $output = [];
+    $returnCode = 0;
+    exec('php composer-installer.php 2>&1', $output, $returnCode);
+    
+    if ($returnCode !== 0) {
+        throw new Exception("Composer installation failed: " . implode("\n", $output));
+    }
+    
+    unlink('composer-installer.php');
+    echo "✅ Composer installed successfully!\n";
+}
+
+function installNodeDependencies() {
+    echo "📦 Installing Node.js dependencies...\n";
+    
+    $npmPath = findExecutable('npm');
+    if (!$npmPath) {
+        // Try to install Node.js and NPM
+        installNodeJS();
+        $npmPath = 'npm';
+    }
+    
+    // Run npm install
+    $command = "$npmPath install --production --silent 2>&1";
+    $output = [];
+    $returnCode = 0;
+    exec($command, $output, $returnCode);
+    
+    if ($returnCode !== 0) {
+        echo "⚠️ NPM installation failed, continuing without Node.js dependencies...\n";
+        return;
+    }
+    
+    echo "✅ Node.js dependencies installed successfully!\n";
+}
+
+function installNodeJS() {
+    echo "📥 Installing Node.js and NPM...\n";
+    
+    $os = php_uname('s');
+    $arch = php_uname('m');
+    
+    if ($os === 'Linux') {
+        // Install Node.js on Linux
+        $commands = [
+            'curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -',
+            'sudo apt-get install -y nodejs'
+        ];
+        
+        foreach ($commands as $cmd) {
+            $output = [];
+            $returnCode = 0;
+            exec($cmd . ' 2>&1', $output, $returnCode);
+            
+            if ($returnCode !== 0) {
+                echo "⚠️ Node.js installation failed, continuing without Node.js...\n";
+                return;
+            }
+        }
+    } else {
+        echo "⚠️ Node.js installation not supported on this OS, continuing without Node.js...\n";
+        return;
+    }
+    
+    echo "✅ Node.js and NPM installed successfully!\n";
+}
+
+function installSystemDependencies() {
+    echo "🔧 Installing system dependencies...\n";
+    
+    $os = php_uname('s');
+    
+    if ($os === 'Linux') {
+        $packages = [
+            'php7.4-cli',
+            'php7.4-mysql',
+            'php7.4-sqlite3',
+            'php7.4-json',
+            'php7.4-mbstring',
+            'php7.4-openssl',
+            'php7.4-curl',
+            'php7.4-gd',
+            'php7.4-zip',
+            'php7.4-xml',
+            'unzip',
+            'curl',
+            'wget'
+        ];
+        
+        $command = 'sudo apt-get update && sudo apt-get install -y ' . implode(' ', $packages) . ' 2>&1';
+        $output = [];
+        $returnCode = 0;
+        exec($command, $output, $returnCode);
+        
+        if ($returnCode !== 0) {
+            echo "⚠️ System dependencies installation failed, continuing...\n";
+        } else {
+            echo "✅ System dependencies installed successfully!\n";
+        }
+    }
+}
+
+function buildAssets() {
+    echo "🎨 Building assets...\n";
+    
+    $npmPath = findExecutable('npm');
+    if ($npmPath && file_exists('package.json')) {
+        // Run npm build
+        $command = "$npmPath run production 2>&1";
+        $output = [];
+        $returnCode = 0;
+        exec($command, $output, $returnCode);
+        
+        if ($returnCode !== 0) {
+            echo "⚠️ Asset building failed, continuing without optimized assets...\n";
+        } else {
+            echo "✅ Assets built successfully!\n";
+        }
+    } else {
+        echo "⚠️ NPM not available, skipping asset building...\n";
+    }
+}
+
+function setupWebServer() {
+    echo "🌐 Setting up web server...\n";
+    
+    // Include web server setup
+    if (file_exists('auto-server-setup.php')) {
+        include 'auto-server-setup.php';
+        setupWebServer();
+    } else {
+        echo "⚠️ Web server setup file not found, skipping...\n";
     }
 }
 
@@ -432,12 +626,67 @@ function checkRequirements() {
         'GD Extension' => extension_loaded('gd'),
         'ZIP Extension' => extension_loaded('zip'),
         'XML Extension' => extension_loaded('xml'),
+        'Composer' => checkComposer(),
+        'Node.js' => checkNodeJS(),
+        'NPM' => checkNPM(),
         'File Write Permission' => is_writable('.'),
         'Storage Directory Writable' => is_writable('storage') || mkdir('storage', 0755, true),
         'Public Directory Writable' => is_writable('public') || mkdir('public', 0755, true)
     ];
     
     return $requirements;
+}
+
+function checkComposer() {
+    $composerPath = findExecutable('composer');
+    return $composerPath !== null;
+}
+
+function checkNodeJS() {
+    $nodePath = findExecutable('node');
+    if ($nodePath) {
+        $version = exec('node --version 2>/dev/null');
+        return version_compare(str_replace('v', '', $version), '14.0.0', '>=');
+    }
+    return false;
+}
+
+function checkNPM() {
+    $npmPath = findExecutable('npm');
+    if ($npmPath) {
+        $version = exec('npm --version 2>/dev/null');
+        return version_compare($version, '6.0.0', '>=');
+    }
+    return false;
+}
+
+function findExecutable($command) {
+    $paths = [
+        '/usr/local/bin',
+        '/usr/bin',
+        '/bin',
+        '/opt/homebrew/bin',
+        '/home/ubuntu/.local/bin',
+        getcwd() . '/vendor/bin'
+    ];
+    
+    foreach ($paths as $path) {
+        $fullPath = $path . '/' . $command;
+        if (is_executable($fullPath)) {
+            return $fullPath;
+        }
+    }
+    
+    // Check if command is in PATH
+    $output = [];
+    $returnCode = 0;
+    exec("which $command 2>/dev/null", $output, $returnCode);
+    
+    if ($returnCode === 0 && !empty($output[0])) {
+        return $output[0];
+    }
+    
+    return null;
 }
 
 ?>
@@ -773,22 +1022,97 @@ function checkRequirements() {
                                         <div class="spinner-border text-primary mb-3" role="status">
                                             <span class="visually-hidden">Installing...</span>
                                         </div>
-                                        <h5>Installing...</h5>
+                                        <h5>Installing Dependencies...</h5>
                                         <p class="text-muted">This may take a few moments</p>
+                                        
+                                        <!-- Installation Progress -->
+                                        <div class="progress mb-3" style="height: 20px;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                 role="progressbar" style="width: 0%" id="installProgress">
+                                                <span id="installStatus">Starting installation...</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Installation Steps -->
+                                        <div class="text-start">
+                                            <div class="install-step" id="step1">
+                                                <i class="fas fa-circle-notch fa-spin text-primary me-2"></i>
+                                                <span>Installing Composer dependencies...</span>
+                                            </div>
+                                            <div class="install-step" id="step2">
+                                                <i class="fas fa-circle text-muted me-2"></i>
+                                                <span>Installing Node.js dependencies...</span>
+                                            </div>
+                                            <div class="install-step" id="step3">
+                                                <i class="fas fa-circle text-muted me-2"></i>
+                                                <span>Setting up database...</span>
+                                            </div>
+                                            <div class="install-step" id="step4">
+                                                <i class="fas fa-circle text-muted me-2"></i>
+                                                <span>Creating admin user...</span>
+                                            </div>
+                                            <div class="install-step" id="step5">
+                                                <i class="fas fa-circle text-muted me-2"></i>
+                                                <span>Building assets...</span>
+                                            </div>
+                                            <div class="install-step" id="step6">
+                                                <i class="fas fa-circle text-muted me-2"></i>
+                                                <span>Configuring web server...</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
                             <script>
-                                // Auto-submit form to start installation
+                                // Installation progress simulation
                                 document.addEventListener('DOMContentLoaded', function() {
-                                    setTimeout(function() {
-                                        const form = document.createElement('form');
-                                        form.method = 'POST';
-                                        form.action = '?step=install';
-                                        document.body.appendChild(form);
-                                        form.submit();
-                                    }, 2000);
+                                    const steps = [
+                                        { id: 'step1', text: 'Installing Composer dependencies...', duration: 3000 },
+                                        { id: 'step2', text: 'Installing Node.js dependencies...', duration: 4000 },
+                                        { id: 'step3', text: 'Setting up database...', duration: 2000 },
+                                        { id: 'step4', text: 'Creating admin user...', duration: 1000 },
+                                        { id: 'step5', text: 'Building assets...', duration: 3000 },
+                                        { id: 'step6', text: 'Configuring web server...', duration: 2000 }
+                                    ];
+                                    
+                                    let currentStep = 0;
+                                    const progressBar = document.getElementById('installProgress');
+                                    const statusText = document.getElementById('installStatus');
+                                    
+                                    function updateProgress() {
+                                        if (currentStep < steps.length) {
+                                            const step = steps[currentStep];
+                                            const stepElement = document.getElementById(step.id);
+                                            
+                                            // Update current step
+                                            stepElement.querySelector('i').className = 'fas fa-spinner fa-spin text-primary me-2';
+                                            statusText.textContent = step.text;
+                                            
+                                            // Update progress bar
+                                            const progress = ((currentStep + 1) / steps.length) * 100;
+                                            progressBar.style.width = progress + '%';
+                                            
+                                            currentStep++;
+                                            
+                                            setTimeout(updateProgress, step.duration);
+                                        } else {
+                                            // All steps completed, submit form
+                                            statusText.textContent = 'Installation complete!';
+                                            progressBar.style.width = '100%';
+                                            
+                                            setTimeout(function() {
+                                                const form = document.createElement('form');
+                                                form.method = 'POST';
+                                                form.action = '?step=install';
+                                                document.body.appendChild(form);
+                                                form.submit();
+                                            }, 1000);
+                                        }
+                                    }
+                                    
+                                    // Start progress
+                                    setTimeout(updateProgress, 1000);
                                 });
                             </script>
 
