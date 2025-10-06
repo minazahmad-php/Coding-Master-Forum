@@ -1,0 +1,75 @@
+Complete Forum Project - Important Files List
+===============================================
+
+Core Application Files:
+- index.php
+- install.php
+- composer.json
+- package.json
+- webpack.mix.js
+- .env.example
+- README.md
+- INSTALL.md
+
+App Directory:
+- app/Core/ (16 files)
+- app/Controllers/ (23 files)
+- app/Models/ (8 files)
+- app/Services/ (77 files)
+- app/Config/ (7 files)
+- app/Middleware/ (12 files)
+
+Database:
+- database/migrations/ (20 files)
+- database/seeders/ (2 files)
+
+Views:
+- resources/views/ (47 files)
+- views/ (45 files)
+
+Public Assets:
+- public/ (16 files)
+- public/assets/ (16 files)
+
+Mobile App:
+- mobile-app/App.tsx
+- mobile-app/package.json
+- mobile-app/src/navigation/MainNavigator.tsx
+
+Documentation:
+- docs/API.md
+- docs/DEPLOYMENT.md
+- docs/install.md
+- docs/structure.md
+
+Scripts:
+- scripts/auto-update.php
+- scripts/setup-cron.sh
+- upload-to-github.sh
+
+Configuration:
+- config/app.php
+- config/database.php
+- config/security.php
+- config/services.php
+
+Routes:
+- routes/web.php
+- routes/api.php
+- routes/admin.php
+
+Middleware:
+- middleware/ (12 files)
+
+Language:
+- lang/en.php
+- lang/bn.php
+- lang/en/ (1 file)
+- lang/bn/ (1 file)
+
+Tests:
+- tests/Unit/UserTest.php
+- tests/Integration/ForumTest.php
+
+Total Files: 200+ files
+Total Size: ~5.36 MB
