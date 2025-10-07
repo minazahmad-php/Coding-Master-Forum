@@ -29,14 +29,18 @@ http://localhost/your-project-folder/install.php
 
 ### 🔧 **Detailed Installation**
 
-#### **Prerequisites**
+#### **Prerequisites (Auto-Installed)**
 - **PHP 7.4+** with extensions:
   - PDO, PDO_MySQL, PDO_SQLite
   - JSON, MBString, OpenSSL
   - CURL, GD, ZIP, XML
+- **Composer** (Auto-downloaded & installed)
+- **Node.js 14+** (Auto-installed on Linux)
+- **NPM 6+** (Auto-installed with Node.js)
 - **MySQL 5.7+** (for production)
 - **SQLite 3** (for localhost)
-- **Web Server** (Apache/Nginx)
+- **Web Server** (Apache/Nginx - Auto-configured)
+- **System Packages** (Auto-installed: unzip, curl, wget, git)
 
 #### **Installation Options**
 

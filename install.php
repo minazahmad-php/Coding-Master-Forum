@@ -94,16 +94,35 @@ function performInstallation() {
 }
 
 function installDependencies() {
-    echo "🔧 Installing Dependencies...\n";
+    echo "🔧 Smart Dependency Installation...\n";
+    
+    // Check if we have dependency report
+    if (isset($_SESSION['dependency_report'])) {
+        $report = $_SESSION['dependency_report'];
+        
+        if (!$report['summary']['can_install']) {
+            echo "❌ Cannot proceed with installation due to missing dependencies:\n";
+            foreach ($report['errors'] as $error) {
+                echo "   - $error\n";
+            }
+            throw new Exception("Missing required dependencies. Please install them manually and try again.");
+        }
+        
+        echo "✅ All dependencies are available!\n";
+    }
     
     // Install Composer dependencies
     if (!file_exists('vendor/autoload.php')) {
         installComposerDependencies();
+    } else {
+        echo "✅ Composer dependencies already installed\n";
     }
     
     // Install Node.js dependencies
     if (!file_exists('node_modules')) {
         installNodeDependencies();
+    } else {
+        echo "✅ Node.js dependencies already installed\n";
     }
     
     // Install system dependencies if needed
@@ -614,27 +633,49 @@ function setFilePermissions() {
 }
 
 function checkRequirements() {
-    $requirements = [
-        'PHP Version >= 7.4' => version_compare(PHP_VERSION, '7.4.0', '>='),
-        'PDO Extension' => extension_loaded('pdo'),
-        'PDO MySQL Extension' => extension_loaded('pdo_mysql'),
-        'PDO SQLite Extension' => extension_loaded('pdo_sqlite'),
-        'JSON Extension' => extension_loaded('json'),
-        'MBString Extension' => extension_loaded('mbstring'),
-        'OpenSSL Extension' => extension_loaded('openssl'),
-        'CURL Extension' => extension_loaded('curl'),
-        'GD Extension' => extension_loaded('gd'),
-        'ZIP Extension' => extension_loaded('zip'),
-        'XML Extension' => extension_loaded('xml'),
-        'Composer' => checkComposer(),
-        'Node.js' => checkNodeJS(),
-        'NPM' => checkNPM(),
-        'File Write Permission' => is_writable('.'),
-        'Storage Directory Writable' => is_writable('storage') || mkdir('storage', 0755, true),
-        'Public Directory Writable' => is_writable('public') || mkdir('public', 0755, true)
-    ];
-    
-    return $requirements;
+    // Include dependency checker
+    if (file_exists('dependency-checker.php')) {
+        include 'dependency-checker.php';
+        $checker = new DependencyChecker();
+        $report = $checker->getInstallationReport();
+        
+        // Convert report to requirements format
+        $requirements = [];
+        foreach ($report['details'] as $key => $detail) {
+            $requirements[$detail['name']] = $detail['installed'];
+        }
+        
+        // Add file permission checks
+        $requirements['File Write Permission'] = is_writable('.');
+        $requirements['Storage Directory Writable'] = is_writable('storage') || mkdir('storage', 0755, true);
+        $requirements['Public Directory Writable'] = is_writable('public') || mkdir('public', 0755, true);
+        
+        // Store report in session for later use
+        $_SESSION['dependency_report'] = $report;
+        
+        return $requirements;
+    } else {
+        // Fallback to basic checks
+        return [
+            'PHP Version >= 7.4' => version_compare(PHP_VERSION, '7.4.0', '>='),
+            'PDO Extension' => extension_loaded('pdo'),
+            'PDO MySQL Extension' => extension_loaded('pdo_mysql'),
+            'PDO SQLite Extension' => extension_loaded('pdo_sqlite'),
+            'JSON Extension' => extension_loaded('json'),
+            'MBString Extension' => extension_loaded('mbstring'),
+            'OpenSSL Extension' => extension_loaded('openssl'),
+            'CURL Extension' => extension_loaded('curl'),
+            'GD Extension' => extension_loaded('gd'),
+            'ZIP Extension' => extension_loaded('zip'),
+            'XML Extension' => extension_loaded('xml'),
+            'Composer' => checkComposer(),
+            'Node.js' => checkNodeJS(),
+            'NPM' => checkNPM(),
+            'File Write Permission' => is_writable('.'),
+            'Storage Directory Writable' => is_writable('storage') || mkdir('storage', 0755, true),
+            'Public Directory Writable' => is_writable('public') || mkdir('public', 0755, true)
+        ];
+    }
 }
 
 function checkComposer() {
@@ -775,6 +816,28 @@ function findExecutable($command) {
                                             <i class="fas fa-<?php echo $status ? 'check' : 'times'; ?> status-icon status-<?php echo $status ? 'pass' : 'fail'; ?>"></i>
                                         </div>
                                     <?php endforeach; ?>
+                                    
+                                    <?php if (isset($_SESSION['dependency_report'])): ?>
+                                        <?php $report = $_SESSION['dependency_report']; ?>
+                                        <?php if (!$report['summary']['can_install']): ?>
+                                            <div class="alert alert-danger mt-3">
+                                                <h6><i class="fas fa-exclamation-triangle me-2"></i>Installation Blocked</h6>
+                                                <p class="mb-2">The following dependencies are missing and cannot be auto-installed:</p>
+                                                <ul class="mb-0">
+                                                    <?php foreach ($report['errors'] as $error): ?>
+                                                        <li><?php echo htmlspecialchars($error); ?></li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                                <hr>
+                                                <p class="mb-0"><strong>Solution:</strong> Please install the missing dependencies manually and refresh this page.</p>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="alert alert-success mt-3">
+                                                <h6><i class="fas fa-check-circle me-2"></i>Ready to Install</h6>
+                                                <p class="mb-0">All dependencies are available! The installation will proceed automatically.</p>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
