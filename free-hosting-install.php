@@ -62,7 +62,17 @@ if ($_POST) {
             header('Location: ?step=install');
             exit;
         case 'install':
-            performFreeHostingInstallation();
+            if (isset($_POST['install_started'])) {
+                $result = performFreeHostingInstallation();
+                if (strpos($result, 'successfully') !== false) {
+                    // Installation successful, redirect to complete page
+                    header('Location: ?step=complete');
+                    exit;
+                } else {
+                    // Installation failed, show error
+                    $error = $result;
+                }
+            }
             break;
     }
 }
@@ -100,11 +110,11 @@ function performFreeHostingInstallation() {
         // Step 9: Clear session
         session_destroy();
         
-        header('Location: ?step=complete');
-        exit;
+        // Return success message instead of redirect
+        return "Installation completed successfully!";
         
     } catch (Exception $e) {
-        $error = "Free hosting installation failed: " . $e->getMessage();
+        return "Free hosting installation failed: " . $e->getMessage();
     }
 }
 
@@ -892,6 +902,13 @@ function checkFreeHostingRequirements() {
 
                     <!-- Content -->
                     <div class="content">
+                        <?php if (isset($error)): ?>
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Installation Error:</strong> <?php echo htmlspecialchars($error); ?>
+                            </div>
+                        <?php endif; ?>
+                        
                         <?php if ($currentStep === 'welcome'): ?>
                             <!-- Welcome Step -->
                             <div class="text-center mb-4">
@@ -1146,6 +1163,29 @@ function checkFreeHostingRequirements() {
                                 <h3>Installing Free Hosting Forum</h3>
                                 <p class="text-muted">Please wait while we set up your free hosting forum...</p>
                             </div>
+                            
+                            <?php
+                            // Auto-start installation if not already started
+                            if (!isset($_POST['install_started'])) {
+                                echo '<script>
+                                    document.addEventListener("DOMContentLoaded", function() {
+                                        // Auto-start installation after 1 second
+                                        setTimeout(function() {
+                                            const form = document.createElement("form");
+                                            form.method = "POST";
+                                            form.action = "?step=install";
+                                            const input = document.createElement("input");
+                                            input.type = "hidden";
+                                            input.name = "install_started";
+                                            input.value = "1";
+                                            form.appendChild(input);
+                                            document.body.appendChild(form);
+                                            form.submit();
+                                        }, 1000);
+                                    });
+                                </script>';
+                            }
+                            ?>
 
                             <div class="card">
                                 <div class="card-body">
@@ -1191,6 +1231,14 @@ function checkFreeHostingRequirements() {
                                                 <span>Setting up PWA features...</span>
                                             </div>
                                         </div>
+                                        
+                                        <!-- Installation Complete Message -->
+                                        <div id="installComplete" style="display: none;" class="mt-4">
+                                            <div class="alert alert-success">
+                                                <i class="fas fa-check-circle me-2"></i>
+                                                <strong>Installation Complete!</strong> Redirecting to complete page...
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1210,6 +1258,7 @@ function checkFreeHostingRequirements() {
                                     let currentStep = 0;
                                     const progressBar = document.getElementById('installProgress');
                                     const statusText = document.getElementById('installStatus');
+                                    const installComplete = document.getElementById('installComplete');
                                     
                                     function updateProgress() {
                                         if (currentStep < steps.length) {
@@ -1228,17 +1277,15 @@ function checkFreeHostingRequirements() {
                                             
                                             setTimeout(updateProgress, step.duration);
                                         } else {
-                                            // All steps completed, submit form
+                                            // All steps completed, show complete message
                                             statusText.textContent = 'Free hosting installation complete!';
                                             progressBar.style.width = '100%';
+                                            installComplete.style.display = 'block';
                                             
+                                            // Redirect to complete page after 2 seconds
                                             setTimeout(function() {
-                                                const form = document.createElement('form');
-                                                form.method = 'POST';
-                                                form.action = '?step=install';
-                                                document.body.appendChild(form);
-                                                form.submit();
-                                            }, 1000);
+                                                window.location.href = '?step=complete';
+                                            }, 2000);
                                         }
                                     }
                                     
