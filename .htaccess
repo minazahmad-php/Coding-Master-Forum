@@ -1,69 +1,31 @@
-# Apache configuration for forum application
-
-# Enable rewrite engine
 RewriteEngine On
 
-# Security headers
-Header always set X-Content-Type-Options nosniff
-Header always set X-Frame-Options DENY
-Header always set X-XSS-Protection "1; mode=block"
-Header always set Referrer-Policy "strict-origin-when-cross-origin"
-Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+# Redirect to index.php for clean URLs
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
 
-# Force HTTPS (uncomment for production)
-# RewriteCond %{HTTPS} off
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# Security
+Options -Indexes
+ServerSignature Off
 
-# Hide sensitive files
+# Prevent access to sensitive files
 <Files ".env">
     Order allow,deny
     Deny from all
 </Files>
 
-<Files "composer.json">
+<Files ".htaccess">
     Order allow,deny
     Deny from all
 </Files>
 
-<Files "composer.lock">
+<Files "*.log">
     Order allow,deny
     Deny from all
 </Files>
 
-<Files "package.json">
-    Order allow,deny
-    Deny from all
-</Files>
-
-<Files "webpack.mix.js">
-    Order allow,deny
-    Deny from all
-</Files>
-
-# Protect storage directory
-<Directory "storage">
-    Order allow,deny
-    Deny from all
-</Directory>
-
-# Protect database directory
-<Directory "database">
-    Order allow,deny
-    Deny from all
-</Directory>
-
-# Protect app directory
-<Directory "app">
-    Order allow,deny
-    Deny from all
-</Directory>
-
-# Pretty URLs - Route all requests to index.php
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.php [QSA,L]
-
-# Cache static assets
+# Cache static files
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType text/css "access plus 1 month"
@@ -73,9 +35,10 @@ RewriteRule ^(.*)$ index.php [QSA,L]
     ExpiresByType image/jpeg "access plus 1 month"
     ExpiresByType image/gif "access plus 1 month"
     ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
 </IfModule>
 
-# Gzip compression
+# Compression
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/plain
     AddOutputFilterByType DEFLATE text/html
@@ -86,12 +49,28 @@ RewriteRule ^(.*)$ index.php [QSA,L]
     AddOutputFilterByType DEFLATE application/rss+xml
     AddOutputFilterByType DEFLATE application/javascript
     AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
 </IfModule>
 
-# Prevent access to PHP files in uploads directory
-<Directory "public/uploads">
-    <Files "*.php">
-        Order allow,deny
-        Deny from all
-    </Files>
-</Directory>
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
+
+# PHP settings for free hosting
+<IfModule mod_php7.c>
+    php_value memory_limit 128M
+    php_value max_execution_time 30
+    php_value max_input_vars 1000
+    php_value upload_max_filesize 2M
+    php_value post_max_size 2M
+    php_value max_file_uploads 5
+</IfModule>
+
+# Error pages
+ErrorDocument 404 /index.php?page=404
+ErrorDocument 500 /index.php?page=500
