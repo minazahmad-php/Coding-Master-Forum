@@ -1,48 +1,84 @@
 <?php
 /**
- * Forum Application Entry Point
- * Main entry point for the forum application
+ * Forum Project - Free Hosting Optimized
+ * Main Entry Point
+ * 
+ * @author Your Name
+ * @version 1.0.0
+ * @license MIT
  */
 
-// Start output buffering
-ob_start();
+// Start session
+session_start();
 
-// Set error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Define application constants
-define('APP_ROOT', __DIR__);
-define('APP_PATH', APP_ROOT . '/app');
-define('CONFIG_PATH', APP_PATH . '/Config');
-define('STORAGE_PATH', APP_ROOT . '/storage');
-define('PUBLIC_PATH', APP_ROOT . '/public');
-
-// Check if installation is complete
-if (!file_exists('.installed')) {
-    header('Location: install.php');
+// Check if installation is completed
+if (!file_exists('.free-hosting-installed')) {
+    header('Location: free-hosting-install.php');
     exit;
 }
 
-// Check installation status and run post-installation if needed
-require_once 'check-installation.php';
-$installStatus = getInstallationStatus();
-
-if ($installStatus['status'] !== 'complete') {
-    // Run post-installation if needed
-    if (file_exists('post-install.php')) {
-        include 'post-install.php';
+// Load environment variables
+if (file_exists('.env')) {
+    $lines = file('.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+            list($key, $value) = explode('=', $line, 2);
+            $_ENV[trim($key)] = trim($value);
+        }
     }
 }
 
-// Load Composer autoloader
-require_once APP_ROOT . '/vendor/autoload.php';
+// Database configuration
+$db_config = [
+    'host' => $_ENV['DB_HOST'] ?? 'localhost',
+    'port' => $_ENV['DB_PORT'] ?? '3306',
+    'database' => $_ENV['DB_DATABASE'] ?? 'u123456789_forum',
+    'username' => $_ENV['DB_USERNAME'] ?? 'root',
+    'password' => $_ENV['DB_PASSWORD'] ?? '',
+    'charset' => 'utf8mb4'
+];
 
-// Load application bootstrap
-require_once APP_ROOT . '/bootstrap/app.php';
+// Database connection
+try {
+    $dsn = "mysql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['database']};charset={$db_config['charset']}";
+    $pdo = new PDO($dsn, $db_config['username'], $db_config['password'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false
+    ]);
+} catch (PDOException $e) {
+    die("Database connection failed: " . $e->getMessage());
+}
 
-// Initialize application
-$app = new App\Core\Application();
+// Get current page
+$page = $_GET['page'] ?? 'home';
+$action = $_GET['action'] ?? 'index';
 
-// Handle the request
-$app->run();
+// Include functions
+require_once 'includes/functions.php';
+
+// Route handling
+switch ($page) {
+    case 'home':
+        include 'pages/home.php';
+        break;
+    case 'login':
+        include 'pages/login.php';
+        break;
+    case 'register':
+        include 'pages/register.php';
+        break;
+    case 'profile':
+        include 'pages/profile.php';
+        break;
+    case 'admin':
+        include 'pages/admin.php';
+        break;
+    case 'api':
+        include 'api/index.php';
+        break;
+    default:
+        include 'pages/404.php';
+        break;
+}
+?>
