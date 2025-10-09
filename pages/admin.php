@@ -261,7 +261,8 @@ $total_replies = $pdo->query("SELECT COUNT(*) FROM replies")->fetchColumn();
                     <div class="card">
                         <div class="card-body">
                             <?php
-                            $users = $pdo->query("SELECT * FROM users ORDER BY created_at DESC")->fetchAll();
+                            $users_stmt = $pdo->query("SELECT * FROM users ORDER BY created_at DESC");
+                            $users = $users_stmt->fetchAll();
                             ?>
                             <div class="table-responsive">
                                 <table class="table table-hover">

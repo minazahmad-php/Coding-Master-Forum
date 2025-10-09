@@ -74,6 +74,18 @@ switch ($page) {
     case 'admin':
         include 'pages/admin.php';
         break;
+    case 'topic':
+        include 'pages/topic.php';
+        break;
+    case 'category':
+        include 'pages/category.php';
+        break;
+    case 'create-topic':
+        include 'pages/create-topic.php';
+        break;
+    case '500':
+        include 'pages/500.php';
+        break;
     case 'api':
         include 'api/index.php';
         break;
